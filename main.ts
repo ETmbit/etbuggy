@@ -1601,10 +1601,10 @@ namespace EtBuggy {
         drive.speed(speedL, speedR)
     }
 
-    //% block="steer %dir with a %bend %% turn"
-    //% block.loc.nl="stuur %dir met een %bend %% bocht"
+    //% block="steer %steer with a %bend %% turn"
+    //% block.loc.nl="stuur %steer met een %bend %% bocht"
     //% bend.min = 0 bend.max=100 bend.defl=30
-    export function bend(bend: number, steer: ETmoveX) {
+    export function bend(steer: ETmoveX, bend: number) {
         bendPerc = (steer == ETmoveX.Left ? -bend : bend)
         go()
     }
@@ -1612,7 +1612,7 @@ namespace EtBuggy {
     //% block="drive %dir with %speed %% speed"
     //% block.loc.nl="rijd %dir met %speed %% snelheid"
     //% speed.min = 0 speed.max=100 speed.defl=30
-    export function run(dir: ETmoveY, speed: number, bend: number, steer: ETmoveX) {
+    export function run(dir: ETmoveY, speed: number) {
         speedPerc = (dir == ETmoveY.Forward ? speed : -speed)
         go()
     }
