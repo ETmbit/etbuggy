@@ -1585,14 +1585,35 @@ namespace EtBuggy {
     let color = PxColor.create()
     drive.setDiameter(67)
 
-    //% block="drive %dir with %speed %% speed || and steer %bend %% %steer"
-    //% block.loc.nl="rijd %dir met %speed %% snelheid || en stuur %bend %% %steer"
+    let speedPerc = 0
+    let bendPerc = 0
+
+    function go() {
+        let speedL = Math.abs(speedPerc)
+        let speedR = Math.abs(speedPerc)
+        let delta = speedR * bendPerc / 200
+        speedL += delta
+        speedR -= delta
+        if (speedPerc < 0) {
+            speedL = -speedL
+            speedR = -speedR
+        }
+        drive.speed(speedL, speedR)
+    }
+
+    //% block="steer %dir with a %bend %% turn"
+    //% block.loc.nl="stuur %dir met een %bend %% bocht"
+    //% bend.min = 0 bend.max=100 bend.defl=30
+    export function bend(bend: number, steer: ETmoveX) {
+        bendPerc = (steer == ETmoveX.Left ? -bend : bend)
+        go()
+    }
+
+    //% block="drive %dir with %speed %% speed"
+    //% block.loc.nl="rijd %dir met %speed %% snelheid"
     //% speed.min = 0 speed.max=100 speed.defl=30
-    //% bend.min = 0 bend.max=100 bend.defl=0
     export function run(dir: ETmoveY, speed: number, bend: number, steer: ETmoveX) {
-        if (dir == ETmoveY.Forward)
-            drive.speed(speed, speed)
-        else
-            drive.speed(-speed, -speed)
+        speedPerc = (dir == ETmoveY.Forward ? speed : -speed)
+        go()
     }
 }
