@@ -1629,6 +1629,7 @@ namespace EtBuggy {
     let islidar = true
     let cmnear = 30
     let cmfar = 200
+    let cmmax = 250
     drive.setDiameter(67)
     servo.setAngleMode(ETangle.Relative)
 
@@ -1657,6 +1658,28 @@ namespace EtBuggy {
     }
 
     //% subcategory="Afstand"
+    //% block="an object is far away"
+    //% block.loc.nl="een voorwerp is ver weg"
+    export function isFarDistance(): boolean {
+        let cm = readDistance()
+        return (cm > cmfar && cm < cmmax)
+    }
+
+    //% subcategory="Afstand"
+    //% block="an object is near"
+    //% block.loc.nl="een voorwerp is dichtbij"
+    export function isCloseDistance(): boolean {
+        return (readDistance() < cmnear)
+    }
+
+    //% subcategory="Afstand"
+    //% block="an object is observed"
+    //% block.loc.nl="er wordt een voorwerp waargenomen"
+    export function isObserved(): boolean {
+        return (readDistance() < cmmax)
+    }
+
+    //% subcategory="Afstand"
     //% block="nothing observed"
     //% block.loc.nl="niets waargenomen"
     export function nothingObserved(): number {
@@ -1664,40 +1687,10 @@ namespace EtBuggy {
     }
 
     //% subcategory="Afstand"
-    //% block="an object is far away"
-    //% block.loc.nl="een voorwerp is ver weg"
-    export function isFarDistance(): boolean {
-        if (islidar)
-            return (lidarsens.read() > cmfar)
-        else
-            return (ultrasonesens.read() > cmfar)
-    }
-
-    //% subcategory="Afstand"
-    //% block="an object is near"
-    //% block.loc.nl="een voorwerp is dichtbij"
-    export function isCloseDistance(): boolean {
-        if (islidar)
-            return (lidarsens.read() < cmnear)
-        else
-            return (ultrasonesens.read() < cmnear)
-    }
-
-    //% subcategory="Afstand"
-    //% block="an object is observed"
-    //% block.loc.nl="er wordt een voorwerp waargenomen"
-    export function isObserved(): boolean {
-        if (islidar)
-            return (lidarsens.read() < 999)
-        else
-            return (ultrasonesens.read() < 999)
-    }
-
-    //% subcategory="Afstand"
     //% block="distance"
     //% block.loc.nl="afstand"
     export function readDistance(): number {
-        return ETfield.InField
+        return (islidar ? lidarsens.read() : ultrasonesens.read())
     }
 
     //% subcategory="Veld"
@@ -1744,6 +1737,13 @@ namespace EtBuggy {
     //% block.loc.nl="lijnpositie"
     export function readLinePos(): ETtrack {
         return tracksens.read()
+    }
+
+    //% subcategory="Instellingen"
+    //% block="the biggest distance is %max cm"
+    //% block.loc.nl="de grootste afstand is %max cm"
+    export function setMaxDistance(max: number) {
+        cmmax = max
     }
 
     //% subcategory="Instellingen"
