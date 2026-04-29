@@ -743,7 +743,7 @@ namespace PxTrackFour {
             this.trackType = _type
         }
 
-        setTracktype(_type: ETtrackType) {
+        setTrackType(_type: ETtrackType) {
             this.trackType = _type
         }
 
@@ -1575,14 +1575,30 @@ namespace PxWheelsTwo {
 
 //###########################################################
 
+enum ETfield {
+    //% block="in the field"
+    //% block.loc.nl="in het veld"
+    InField,
+    //% block="on the line"
+    //% block.loc.nl="op de lijn"
+    OnBorder,
+    //% block="out of the field"
+    //% block.loc.nl="buiten het veld"
+    OutOfField,
+}
+
 namespace EtBuggy {
 
     let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: false },
                                    { Port: MotorPort.M1, Revert: true })
     let servo = PxServo.create({ Port: ServoPort.S2, Revert: false })
-    let track = PxTrackFour.create()
-    let dist = EtDistance.create()
-    let color = PxColor.create()
+    let tracksens = PxTrackFour.create()
+    let distancesens = EtDistance.create()
+    let colorsens = PxColor.create()
+    let tracktype = ETtrackType.DarkOnLight
+    let trackcolor = ETcolor.Black
+    let cmnear = 30
+    let cmfar = 200
     drive.setDiameter(67)
 
     let speedPerc = 0
@@ -1601,11 +1617,89 @@ namespace EtBuggy {
         drive.speed(speedL, speedR)
     }
 
+    //% block="nothing observed"
+    //% block.loc.nl="niets waargenomen"
+    export function nothingObserved(): number {
+        return 999
+    }
+
+    //% block="an object is far away"
+    //% block.loc.nl="een voorwerp is ver weg"
+    export function isFarDistance(): boolean {
+        return (distancesens.read() > cmfar)
+    }
+
+    //% block="an object is near"
+    //% block.loc.nl="een voorwerp is dichtbij"
+    export function isCloseDistance(): boolean {
+        return (distancesens.read() > cmnear)
+    }
+
+    //% block="an object is observed"
+    //% block.loc.nl="er wordt een voorwerp waargenomen"
+    export function isObserved(): boolean {
+        return (distancesens.read() < 999)
+    }
+
+    //% block="the buggy runs over %color"
+    //% block.loc.nl="de buggy rijdt over %color"
+    export function isFieldColor(color: ETcolor): boolean {
+        return (colorsens.read() === color)
+    }
+
+    //% block="the buggy runs %pos"
+    //% block.loc.nl="de buggy rijdt %pos"
+    export function isFieldPos(pos: ETfield): boolean {
+        return (pos === readFieldPos())
+    }
+
+    //% block="the buggy is %pos"
+    //% block.loc.nl="de buggy is %pos"
+    export function isLinePos(pos: ETtrack): boolean {
+        return (tracksens.read() === pos)
+    }
+
+    //% block="distance"
+    //% block.loc.nl="afstand"
+    export function readDistance(): number {
+        return ETfield.InField
+    }
+
+    //% block="field color"
+    //% block.loc.nl="veldkleur"
+    export function readFieldColor(): ETcolor {
+        return colorsens.read()
+    }
+
+    //% block="field position"
+    //% block.loc.nl="veldpositie"
+    export function readFieldPos(): ETfield {
+        if (colorsens.read() === trackcolor)
+            return ETfield.OutOfField
+        if (tracksens.read() === ETtrack.OffTrack)
+            return ETfield.InField
+        return ETfield.OnBorder
+    }
+
+    //% block="line position"
+    //% block.loc.nl="lijnpositie"
+    export function readLinePos(): ETtrack {
+        return tracksens.read()
+    }
+
+    //% block="turn %angle degrees %dir"
+    //% block.loc.nl="draai %angle graden %dir"
+    //% angle.min = 0 angle.max=359
+    export function turn(angle: number, dir: ETmoveZ) {
+        // up and down are regarded from the buggy front side
+        servo.angle(dir === ETmoveZ.Up ? ETrotate.AntiClockwise : ETrotate.Clockwise, angle)
+    }
+
     //% block="steer %steer with a %bend \\% turn"
     //% block.loc.nl="stuur %steer met een %bend \\%  bocht"
     //% bend.min = 0 bend.max=100 bend.defl=30
     export function bend(steer: ETmoveX, bend: number) {
-        bendPerc = (steer == ETmoveX.Left ? -bend : bend)
+        bendPerc = (steer === ETmoveX.Left ? -bend : bend)
         go()
     }
 
@@ -1613,7 +1707,31 @@ namespace EtBuggy {
     //% block.loc.nl="rijd %dir met %speed \\% snelheid"
     //% speed.min = 0 speed.max=100 speed.defl=30
     export function run(dir: ETmoveY, speed: number) {
-        speedPerc = (dir == ETmoveY.Forward ? speed : -speed)
+        speedPerc = (dir === ETmoveY.Forward ? speed : -speed)
         go()
+    }
+
+    //% block="steer %steer with a %bend \\% turn"
+    //% block.loc.nl="stuur %steer met een %bend \\%  bocht"
+    //% bend.min = 0 bend.max=100 bend.defl=30
+    export function stop() {
+        speedPerc = 0
+        bendPerc = 0
+        go()
+    }
+
+    //% block="close is < %close cm and far is > %far cm"
+    //% block.loc.nl="dichtbij is < %close cm en ver is > %far cm"
+    export function setDistances(close: number, far: number) {
+        cmnear = close
+        cmfar = far
+    }
+
+    //% block="the line is %line having color %clr"
+    //% block.loc.nl="de lijn is %line met kleur %clr"
+    export function setTrackType(line: ETtrackType, clr: ETcolor) {
+        trackcolor = clr
+        tracktype = line
+        tracksens.setTrackType(line)
     }
 }
