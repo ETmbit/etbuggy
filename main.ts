@@ -1789,7 +1789,7 @@ namespace EtBuggy {
             return
         }
         // up and down are regarded from the buggy front side
-        servo.angle(dir === ETmoveZ.Up ? ETrotate.AntiClockwise : ETrotate.Clockwise, angle)
+        servo.angle(dir === ETmoveZ.Up ? ETrotate.Clockwise : ETrotate.AntiClockwise, angle)
     }
 
     //% block="steer %steer with a %bend \\% turn"
