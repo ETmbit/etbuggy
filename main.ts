@@ -1605,17 +1605,28 @@ enum ETfield {
     OutOfField,
 }
 
+enum ETdistSens {
+    //% block="Planet X ultrasone"
+    //% block.loc.nl="Planet X ultrasone"
+    Ultrasone,
+    //% block="ElecTricks lidar"
+    //% block.loc.nl="ElecTricks lidar"
+    Lidar,
+}
+
 namespace EtBuggy {
 
     let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
         { Port: MotorPort.M1, Revert: false })
     let servo = PxServo.create({ Port: ServoPort.S2, Revert: false })
     let tracksens = PxTrackFour.create()
-    let distancesens = EtDistance.create()
+    let lidarsens = EtDistance.create()
+    let ultrasonesens = PxDistance.create(RJPort.J1)
     let colorsens = PxColor.create()
     let excludeservo = false
     let tracktype = ETtrackType.DarkOnLight
     let trackcolor = ETcolor.Black
+    let islidar = true
     let cmnear = 30
     let cmfar = 200
     drive.setDiameter(67)
@@ -1656,21 +1667,30 @@ namespace EtBuggy {
     //% block="an object is far away"
     //% block.loc.nl="een voorwerp is ver weg"
     export function isFarDistance(): boolean {
-        return (distancesens.read() > cmfar)
+        if (islidar)
+            return (lidarsens.read() > cmfar)
+        else
+            return (ultrasonesens.read() > cmfar)
     }
 
     //% subcategory="Afstand"
     //% block="an object is near"
     //% block.loc.nl="een voorwerp is dichtbij"
     export function isCloseDistance(): boolean {
-        return (distancesens.read() > cmnear)
+        if (islidar)
+            return (lidarsens.read() < cmnear)
+        else
+            return (ultrasonesens.read() < cmnear)
     }
 
     //% subcategory="Afstand"
     //% block="an object is observed"
     //% block.loc.nl="er wordt een voorwerp waargenomen"
     export function isObserved(): boolean {
-        return (distancesens.read() < 999)
+        if (islidar)
+            return (lidarsens.read() < 999)
+        else
+            return (ultrasonesens.read() < 999)
     }
 
     //% subcategory="Afstand"
@@ -1732,6 +1752,13 @@ namespace EtBuggy {
     export function setDistances(close: number, far: number) {
         cmnear = close
         cmfar = far
+    }
+
+    //% subcategory="Instellingen"
+    //% block="use the %sens sensor"
+    //% block.loc.nl="gebruik de %sens sensor"
+    export function setDistanceSensor(sens: ETdistSens) {
+        islidar = (sens === ETdistSens.Lidar)
     }
 
     //% subcategory="Instellingen"
