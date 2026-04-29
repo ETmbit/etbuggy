@@ -1615,8 +1615,8 @@ enum ETdistSens {
 }
 
 //% color="#0fbc11" icon="\uf1b9"
-//% block="LineFollower"
-//% block.loc.nl="LijnVolger"
+//% block="Buggy"
+//% block.loc.nl="Buggy"
 namespace EtBuggy {
 
     let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
