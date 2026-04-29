@@ -1614,7 +1614,7 @@ enum ETdistSens {
     Lidar,
 }
 
-//% color="#0fbc11" icon="\uf1b9"
+//% color="#FF8844" icon="\uf1b9"
 //% block="Buggy"
 //% block.loc.nl="Buggy"
 namespace EtBuggy {
