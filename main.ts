@@ -281,14 +281,14 @@ function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
     if (green < red && green < blue) min = green
     if (blue < red && blue < green) min = blue
 
-    if (red == max) hue = (0 + (green - blue) / (max - min)) * 60
-    if (green == max) hue = (2 + (blue - red) / (max - min)) * 60
-    if (blue == max) hue = (4 + (red - green) / (max - min)) * 60
+    if (red === max) hue = (0 + (green - blue) / (max - min)) * 60
+    if (green === max) hue = (2 + (blue - red) / (max - min)) * 60
+    if (blue === max) hue = (4 + (red - green) / (max - min)) * 60
 
     if (hue < 0) hue += 360
 
     // translate hue to color names
-    if (hue == 0) return ETcolor.White
+    if (hue === 0) return ETcolor.White
     if (hue < 5) return ETcolor.Orange
     if (hue < 30) return ETcolor.Brown
     if (hue < 100) return ETcolor.Yellow
@@ -419,7 +419,7 @@ let ETradioMsg: { [id: string]: ETradioMessages } = {}
 radio.onReceivedString(function (chunk: string) {
 
     let parts = chunk.split("|")
-    if (parts.length != 3) return
+    if (parts.length !== 3) return
     let id = parts[0]
     let ix = +parts[1]
     let msg = parts[2]
@@ -630,7 +630,7 @@ enum ETtrack {
 
 function etTrackPosition(track: number, mask = ETtrackMask.Track2, tracktype = ETtrackType.DarkOnLight): ETtrack {
 
-    if (tracktype == ETtrackType.LightOnDark) track = ~track
+    if (tracktype === ETtrackType.LightOnDark) track = ~track
 
     if (track & 1) {
         if (track & 16) return ETtrack.Mid
@@ -764,32 +764,32 @@ namespace PxTrackFour {
 
         isTrackFarLeft(): boolean {
             let track = this.read()
-            return (track == ETtrack.FarLeft)
+            return (track === ETtrack.FarLeft)
         }
 
         isTrackAtLeft(): boolean {
             let track = this.read()
-            return (track == ETtrack.Left)
+            return (track === ETtrack.Left)
         }
 
         isTrackFarRight(): boolean {
             let track = this.read()
-            return (track == ETtrack.FarRight)
+            return (track === ETtrack.FarRight)
         }
 
         isTrackAtRight(): boolean {
             let track = this.read()
-            return (track == ETtrack.Right)
+            return (track === ETtrack.Right)
         }
 
         isOnTrack(): boolean {
             let track = this.read()
-            return (track == ETtrack.Mid)
+            return (track === ETtrack.Mid)
         }
 
         isOffTrack(): boolean {
             let track = this.read()
-            return (track == ETtrack.OffTrack)
+            return (track === ETtrack.OffTrack)
         }
     }
 
@@ -934,7 +934,7 @@ namespace EtDistance {
             this.writeReg(SOFT_RESET, 0x01)
             basic.pause(1)
             this.startTimeout()
-            while ((this.readReg(FIRMWARE__SYSTEM_STATUS) & 0x01) == 0) {
+            while ((this.readReg(FIRMWARE__SYSTEM_STATUS) & 0x01) === 0) {
                 if (this.checkTimeoutExpired()) {
                     return
                 }
@@ -1022,7 +1022,7 @@ namespace EtDistance {
             let range = this.results.final_crosstalk_corrected_range_mm_sd0
             this.ranging_data.range_mm = Math.floor((range * 2011 + 0x0400) / 0x0800)
             this.writeReg(SYSTEM__INTERRUPT_CLEAR, 0x01)
-            if (this.results.range_status == 4) this.ranging_data.range_mm = 9999
+            if (this.results.range_status === 4) this.ranging_data.range_mm = 9999
             return this.ranging_data.range_mm
         }
 
@@ -1049,14 +1049,14 @@ namespace EtDistance {
 
         private updateDSS(): void {
             let spadCount = this.results.dss_actual_effective_spads_sd0
-            if (spadCount != 0) {
+            if (spadCount !== 0) {
                 let totalRatePerSpad =
                     this.results.peak_signal_count_rate_crosstalk_corrected_mcps_sd0 +
                     this.results.ambient_count_rate_mcps_sd0
                 if (totalRatePerSpad > 0xFFFF) { totalRatePerSpad = 0xFFFF }
                 totalRatePerSpad <<= 16
                 totalRatePerSpad = Math.floor(totalRatePerSpad / spadCount)
-                if (totalRatePerSpad != 0) {
+                if (totalRatePerSpad !== 0) {
                     let requiredSpads = Math.floor((TargetRate << 16) / totalRatePerSpad)
                     if (requiredSpads > 0xFFFF || requiredSpads < 0) { requiredSpads = 0xFFFF }
                     this.writeReg16Bit(DSS_CONFIG__MANUAL_EFFECTIVE_SPADS_SELECT, requiredSpads)
@@ -1129,7 +1129,7 @@ namespace EtDistance {
         }
 
         private dataReady(): boolean {
-            return (this.readReg(GPIO__TIO_HV_STATUS) & 0x01) == 0
+            return (this.readReg(GPIO__TIO_HV_STATUS) & 0x01) === 0
         }
 
         read(): number {
@@ -1178,10 +1178,10 @@ namespace PxDistance {
             let d = pins.pulseIn(this.echo, PulseValue.High, 25000)
             let version = control.hardwareVersion()
             let distance = d * 34 / 2 / 1000
-            if (version == "1")
+            if (version === "1")
                 distance = distance * 3 / 2
 
-            if (distance == 0 || distance > 430)
+            if (distance === 0 || distance > 430)
                 return 999
 
             return Math.floor(distance)
@@ -1278,7 +1278,7 @@ namespace PxColor {
             let temp_b = 0
             let temp = 0
 
-            if (this.color_new_init == false && this.color_first_init == false) {
+            if (this.color_new_init === false && this.color_first_init === false) {
                 let i = 0;
                 while (i++ < 15) {
                     buf[0] = 0x81
@@ -1289,13 +1289,13 @@ namespace PxColor {
                     pins.i2cWriteBuffer(this.i2cAddress, buf)
                     basic.pause(50);
 
-                    if ((this.i2c_read(0xA4) + this.i2c_read(0xA5) * 256) != 0) {
+                    if ((this.i2c_read(0xA4) + this.i2c_read(0xA5) * 256) !== 0) {
                         this.color_new_init = true
                         break;
                     }
                 }
             }
-            if (this.color_new_init == true) {
+            if (this.color_new_init === true) {
                 basic.pause(150);
                 c = this.i2c_read(0xA6) + this.i2c_read(0xA7) * 256;
                 r = this.i2c_read(0xA0) + this.i2c_read(0xA1) * 256;
@@ -1329,7 +1329,7 @@ namespace PxColor {
                 }
             }
             else {
-                if (this.color_first_init == false)
+                if (this.color_first_init === false)
                     this.init()
                 let tmp = this.i2c_read(APDS9960_STATUS) & 0x1;
                 while (!tmp) {
@@ -1367,11 +1367,21 @@ namespace PxColor {
 //  px-servo.ts  //
 ///////////////////
 
+enum ETangle {
+    //% block="relative"
+    //% block.loc.nl="relatieve"
+    Relative,
+    //%block="absolute"
+    //%block.loc.nl="absolute"
+    Absolute,
+}
 namespace PxServo {
 
     export class Device {
 
         private SV: Servo
+        private relative = false
+        private curangle = 0
 
         private readAngle(): number {
             basic.pause(4)
@@ -1397,10 +1407,14 @@ namespace PxServo {
         angle(rotation: ETrotate, angle: number) {
             // angle in degrees
             if (this.SV.Revert) {
-                rotation = (rotation == ETrotate.Clockwise ? ETrotate.AntiClockwise : ETrotate.Clockwise)
+                rotation = (rotation === ETrotate.Clockwise ? ETrotate.AntiClockwise : ETrotate.Clockwise)
                 angle = 360 - angle
             }
-            while (angle < 0) angle += 360
+            if (this.relative)
+                this.curangle += (rotation === ETrotate.Clockwise ? angle : -angle)
+            else
+                this.curangle = angle
+            while (this.curangle < 0) this.curangle += 360
             angle %= 360
             let buf = pins.createBuffer(8)
             buf[0] = 0xFF;
@@ -1408,14 +1422,18 @@ namespace PxServo {
             buf[2] = this.SV.Port + 1;
             buf[3] = 0x00;
             buf[4] = 0x5D; // absolute angle
-            buf[5] = (angle >> 8) & 0XFF;
+            buf[5] = (this.curangle >> 8) & 0XFF;
             // buf[6]:
             // 1 = short route
             // 2 = clockwise
             // 3 = anticlockwise
-            buf[6] = rotation + 2
-            buf[7] = (angle >> 0) & 0XFF;
+            buf[6] = (rotation === ETrotate.Clockwise ? 2 : 3)
+            buf[7] = this.curangle & 0XFF;
             pins.i2cWriteBuffer(0x10, buf);
+        }
+
+        setAngleMode(mode: ETangle) {
+            this.relative = (mode === ETangle.Relative)
         }
 
         read(): number {
@@ -1467,7 +1485,7 @@ namespace PxWheelsTwo {
             buf[0] = 0xFF;
             buf[1] = 0xF9;
             buf[2] = motor + 1;
-            buf[3] = rotation + 1;
+            buf[3] = rotation - 2;
             buf[4] = 0x60;
             buf[5] = Math.floor(speed);
             buf[6] = 0xF5;
@@ -1589,17 +1607,19 @@ enum ETfield {
 
 namespace EtBuggy {
 
-    let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: false },
-                                   { Port: MotorPort.M1, Revert: true })
+    let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
+        { Port: MotorPort.M1, Revert: false })
     let servo = PxServo.create({ Port: ServoPort.S2, Revert: false })
     let tracksens = PxTrackFour.create()
     let distancesens = EtDistance.create()
     let colorsens = PxColor.create()
+    let excludeservo = false
     let tracktype = ETtrackType.DarkOnLight
     let trackcolor = ETcolor.Black
     let cmnear = 30
     let cmfar = 200
     drive.setDiameter(67)
+    servo.setAngleMode(ETangle.Relative)
 
     let speedPerc = 0
     let bendPerc = 0
@@ -1617,60 +1637,71 @@ namespace EtBuggy {
         drive.speed(speedL, speedR)
     }
 
+    // because of the construction of a model, direct access
+    // to the servo may be destructive
+    // therefore, extensions are offered the possibility to
+    // exclude direct access
+    export function excludeServo() {
+        excludeservo = true
+    }
+
+    //% subcategory="Afstand"
     //% block="nothing observed"
     //% block.loc.nl="niets waargenomen"
     export function nothingObserved(): number {
         return 999
     }
 
+    //% subcategory="Afstand"
     //% block="an object is far away"
     //% block.loc.nl="een voorwerp is ver weg"
     export function isFarDistance(): boolean {
         return (distancesens.read() > cmfar)
     }
 
+    //% subcategory="Afstand"
     //% block="an object is near"
     //% block.loc.nl="een voorwerp is dichtbij"
     export function isCloseDistance(): boolean {
         return (distancesens.read() > cmnear)
     }
 
+    //% subcategory="Afstand"
     //% block="an object is observed"
     //% block.loc.nl="er wordt een voorwerp waargenomen"
     export function isObserved(): boolean {
         return (distancesens.read() < 999)
     }
 
-    //% block="the buggy runs over %color"
-    //% block.loc.nl="de buggy rijdt over %color"
-    export function isFieldColor(color: ETcolor): boolean {
-        return (colorsens.read() === color)
-    }
-
-    //% block="the buggy runs %pos"
-    //% block.loc.nl="de buggy rijdt %pos"
-    export function isFieldPos(pos: ETfield): boolean {
-        return (pos === readFieldPos())
-    }
-
-    //% block="the buggy is %pos"
-    //% block.loc.nl="de buggy is %pos"
-    export function isLinePos(pos: ETtrack): boolean {
-        return (tracksens.read() === pos)
-    }
-
+    //% subcategory="Afstand"
     //% block="distance"
     //% block.loc.nl="afstand"
     export function readDistance(): number {
         return ETfield.InField
     }
 
+    //% subcategory="Veld"
+    //% block="the buggy runs over %color"
+    //% block.loc.nl="de buggy rijdt over %color"
+    export function isFieldColor(color: ETcolor): boolean {
+        return (colorsens.read() === color)
+    }
+
+    //% subcategory="Veld"
+    //% block="the buggy runs %pos"
+    //% block.loc.nl="de buggy rijdt %pos"
+    export function isFieldPos(pos: ETfield): boolean {
+        return (pos === readFieldPos())
+    }
+
+    //% subcategory="Veld"
     //% block="field color"
     //% block.loc.nl="veldkleur"
     export function readFieldColor(): ETcolor {
         return colorsens.read()
     }
 
+    //% subcategory="Veld"
     //% block="field position"
     //% block.loc.nl="veldpositie"
     export function readFieldPos(): ETfield {
@@ -1681,25 +1712,61 @@ namespace EtBuggy {
         return ETfield.OnBorder
     }
 
+    //% subcategory="Lijn"
+    //% block="the buggy is %pos"
+    //% block.loc.nl="de buggy is %pos"
+    export function isLinePos(pos: ETtrack): boolean {
+        return (tracksens.read() === pos)
+    }
+
+    //% subcategory="Lijn"
     //% block="line position"
     //% block.loc.nl="lijnpositie"
     export function readLinePos(): ETtrack {
         return tracksens.read()
     }
 
+    //% subcategory="Instellingen"
+    //% block="close is < %close cm and far is > %far cm"
+    //% block.loc.nl="dichtbij is < %close cm en ver is > %far cm"
+    export function setDistances(close: number, far: number) {
+        cmnear = close
+        cmfar = far
+    }
+
+    //% subcategory="Instellingen"
+    //% block="use servo with %mode angles"
+    //% block.loc.nl="gebruik de servo met %mode hoeken"
+    export function setAngleMode(mode: ETangle) {
+        servo.setAngleMode(mode)
+    }
+
+    //% subcategory="Instellingen"
+    //% block="the line is %line having color %clr"
+    //% block.loc.nl="de lijn is %line met kleur %clr"
+    export function setTrackType(line: ETtrackType, clr: ETcolor) {
+        trackcolor = clr
+        tracktype = line
+        tracksens.setTrackType(line)
+    }
+
     //% block="turn %angle degrees %dir"
     //% block.loc.nl="draai %angle graden %dir"
-    //% angle.min = 0 angle.max=359
     export function turn(angle: number, dir: ETmoveZ) {
+        if (excludeservo) {
+            basic.showString("no servo access")
+            basic.showIcon(IconNames.No)
+            return
+        }
         // up and down are regarded from the buggy front side
         servo.angle(dir === ETmoveZ.Up ? ETrotate.AntiClockwise : ETrotate.Clockwise, angle)
     }
 
     //% block="steer %steer with a %bend \\% turn"
-    //% block.loc.nl="stuur %steer met een %bend \\%  bocht"
+    //% block.loc.nl="stuur %steer met een %bend \\% bocht"
     //% bend.min = 0 bend.max=100 bend.defl=30
-    export function bend(steer: ETmoveX, bend: number) {
-        bendPerc = (steer === ETmoveX.Left ? -bend : bend)
+    export function bend(steer: ETturn, bend: number) {
+        bendPerc = (steer === ETturn.Left ? -bend : bend)
         go()
     }
 
@@ -1711,27 +1778,12 @@ namespace EtBuggy {
         go()
     }
 
-    //% block="steer %steer with a %bend \\% turn"
-    //% block.loc.nl="stuur %steer met een %bend \\%  bocht"
+    //% block="stop"
+    //% block.loc.nl="stop"
     //% bend.min = 0 bend.max=100 bend.defl=30
     export function stop() {
         speedPerc = 0
         bendPerc = 0
         go()
-    }
-
-    //% block="close is < %close cm and far is > %far cm"
-    //% block.loc.nl="dichtbij is < %close cm en ver is > %far cm"
-    export function setDistances(close: number, far: number) {
-        cmnear = close
-        cmfar = far
-    }
-
-    //% block="the line is %line having color %clr"
-    //% block.loc.nl="de lijn is %line met kleur %clr"
-    export function setTrackType(line: ETtrackType, clr: ETcolor) {
-        trackcolor = clr
-        tracktype = line
-        tracksens.setTrackType(line)
     }
 }
