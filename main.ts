@@ -1614,6 +1614,9 @@ enum ETdistSens {
     Lidar,
 }
 
+//% color="#0fbc11" icon="\uf1b9"
+//% block="LineFollower"
+//% block.loc.nl="LijnVolger"
 namespace EtBuggy {
 
     let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
