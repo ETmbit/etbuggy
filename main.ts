@@ -1605,7 +1605,7 @@ namespace EtBuggy {
 
     //% block="release the power from the work motor"
     //% block.loc.nl="haal de kracht van de werkmotor"
-    export function coastServo(angle: number, dir: ETmoveZ) {
+    export function coastServo() {
         servo.coast()
     }
 
