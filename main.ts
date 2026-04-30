@@ -1201,13 +1201,27 @@ namespace PxServo {
             buf[6] = 0xF5;
             buf[7] = 0x00;
             pins.i2cWriteBuffer(0x10, buf);
-            basic.pause(4)
+            basic.pause(20)
             let arr = pins.i2cReadBuffer(0x10, 4);
             return (arr[3] << 24) | (arr[2] << 16) | (arr[1] << 8) | (arr[0]);
         }
 
         constructor(servo: Servo) {
             this.SV = servo
+        }
+
+        coast() {
+            let buf = pins.createBuffer(8)
+            buf[0] = 0xFF;
+            buf[1] = 0xF9;
+            buf[2] = this.SV.Port + 1;
+            buf[3] = 0;
+            buf[4] = 0x60;
+            buf[5] = 0x00;
+            buf[6] = 0x00;
+            buf[7] = 0x00;
+            pins.i2cWriteBuffer(0x10, buf);
+            basic.pause(20)
         }
 
         angle(rotation: ETrotate, angle: number) {
@@ -1236,6 +1250,7 @@ namespace PxServo {
             buf[6] = (rotation === ETrotate.Clockwise ? 2 : 3)
             buf[7] = this.curangle & 0XFF;
             pins.i2cWriteBuffer(0x10, buf);
+            basic.pause(20)
         }
 
         setAngleMode(mode: ETangle) {
@@ -1297,6 +1312,7 @@ namespace PxWheelsTwo {
             buf[6] = 0xF5;
             buf[7] = 0x00;
             pins.i2cWriteBuffer(0x10, buf);
+            basic.pause(20)
         }
 
         private _read(): [number, number] {
@@ -1311,7 +1327,7 @@ namespace PxWheelsTwo {
             buf[6] = 0xF5;
             buf[7] = 0x00;
             pins.i2cWriteBuffer(0x10, buf);
-            basic.pause(1)
+            basic.pause(20)
             let arr = pins.i2cReadBuffer(0x10, 2);
             let retData = (arr[1] << 8) | (arr[0]);
             let left = Math.floor(retData / 3.6) * 0.01;
@@ -1357,9 +1373,10 @@ namespace PxWheelsTwo {
             buf[6] = 0xF5;
             buf[7] = 0x00;
             pins.i2cWriteBuffer(0x10, buf);
-            basic.pause(1)
+            basic.pause(20)
             buf[2] = this.MR.Port + 1;
             pins.i2cWriteBuffer(0x10, buf);
+            basic.pause(20)
         }
 
         read(): [number, number] {
@@ -1586,9 +1603,15 @@ namespace EtBuggy {
         tracksens.setTrackType(line)
     }
 
-    //% block="turn %angle degrees %dir"
-    //% block.loc.nl="draai %angle graden %dir"
-    export function turn(angle: number, dir: ETmoveZ) {
+    //% block="release the power from the work motor"
+    //% block.loc.nl="haal de kracht van de werkmotor"
+    export function coastServo(angle: number, dir: ETmoveZ) {
+        servo.coast()
+    }
+
+    //% block="turn the work motor %angle degrees %dir"
+    //% block.loc.nl="draai de werkmotor %angle graden %dir"
+    export function turnServo(angle: number, dir: ETmoveZ) {
         if (excludeservo) {
             basic.showString("no servo access")
             basic.showIcon(IconNames.No)
