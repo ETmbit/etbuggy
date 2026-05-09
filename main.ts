@@ -15,6 +15,36 @@ Depends on: None
 const ET_LOW = 0
 const ET_HIGH = 1
 
+enum ETpins {
+    //% block="pin P0"
+    //% block.loc.nl="pin P0"
+    P0 = DigitalPin.P0,
+    //% block="pin P1"
+    //% block.loc.nl="pin P1"
+    P1 = DigitalPin.P1,
+    //% block="pin P2"
+    //% block.loc.nl="pin P2"
+    P2 = DigitalPin.P2,
+    //% block="pin P8"
+    //% block.loc.nl="pin P8"
+    P8 = DigitalPin.P8,
+    //% block="pin P12"
+    //% block.loc.nl="pin P12"
+    P12 = DigitalPin.P12,
+    //% block="pin P13"
+    //% block.loc.nl="pin P13"
+    P13 = DigitalPin.P13,
+    //% block="pin P14"
+    //% block.loc.nl="pin P14"
+    P14 = DigitalPin.P14,
+    //% block="pin P15"
+    //% block.loc.nl="pin P15"
+    P15 = DigitalPin.P15,
+    //% block="pin P16"
+    //% block.loc.nl="pin P16"
+    P16 = DigitalPin.P16
+}
+
 enum ETstate {
     //% block="off"
     //% block.loc.nl="uit"
@@ -231,17 +261,17 @@ function etRgbValue(red: number, green: number, blue: number): number {
 }
 
 function etRedValue(rgb: number): number {
-    let r = (rgb >> 16) & 0xFF;
+    let r = (rgb >> 16) & 0xFF
     return r;
 }
 
 function etGreenValue(rgb: number): number {
-    let g = (rgb >> 8) & 0xFF;
+    let g = (rgb >> 8) & 0xFF
     return g;
 }
 
 function etBlueValue(rgb: number): number {
-    let b = (rgb) & 0xFF;
+    let b = (rgb) & 0xFF
     return b;
 }
 
@@ -281,14 +311,14 @@ function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
     if (green < red && green < blue) min = green
     if (blue < red && blue < green) min = blue
 
-    if (red === max) hue = (0 + (green - blue) / (max - min)) * 60
-    if (green === max) hue = (2 + (blue - red) / (max - min)) * 60
-    if (blue === max) hue = (4 + (red - green) / (max - min)) * 60
+    if (red == max) hue = (0 + (green - blue) / (max - min)) * 60
+    if (green == max) hue = (2 + (blue - red) / (max - min)) * 60
+    if (blue == max) hue = (4 + (red - green) / (max - min)) * 60
 
     if (hue < 0) hue += 360
 
     // translate hue to color names
-    if (hue === 0) return ETcolor.White
+    if (hue == 0) return ETcolor.White
     if (hue < 5) return ETcolor.Orange
     if (hue < 30) return ETcolor.Brown
     if (hue < 100) return ETcolor.Yellow
@@ -304,9 +334,9 @@ function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
 }
 
 function etFromRgb(rgb: number): ETcolor {
-    let red = etRedValue(rgb);
-    let green = etGreenValue(rgb);
-    let blue = etBlueValue(rgb);
+    let red = etRedValue(rgb)
+    let green = etGreenValue(rgb)
+    let blue = etBlueValue(rgb)
     return etFromRgbValues(red, green, blue)
 }
 
@@ -374,6 +404,200 @@ namespace etinput {
 
     export function registerStopHandler(handler: () => void) {
         ETstopHandlers.push(handler)
+    }
+}
+
+///////////////////
+//  END INCLUDE  //
+///////////////////
+
+//////////////////
+//  INCLUDE     //
+//  etradio.ts  //
+//////////////////
+
+// the micro:bit radio buffer size is 19 bytes only
+// therefore, messages are sent in chunks
+// a sender sends the chunks with format: id|ix|chunk
+// the final chunk has a unique ack_id: id|-1|ack_id
+// a receiver acknowledges with: id|-2|ack_id
+
+//##### GROUP HANDLING #####\\
+
+const ET_EVENT = 200 + Math.randomRange(0, 100) // semi-unique id
+
+let ETgroup = 1
+let ETgroupTimer = 0
+let ETgroupSet = false
+let ETgroupHandlers: ((group: number) => void)[] = []
+
+function etHandleGroup() {
+    basic.showNumber(ETgroup)
+    if (ETgroupHandlers.length) {
+        for (let ix = 0; ix < ETgroupHandlers.length; ix++)
+            ETgroupHandlers[ix](ETgroup)
+    }
+    else
+        basic.showIcon(IconNames.Yes)
+}
+
+control.onEvent(ET_EVENT, 0, function () {
+    while (ETgroupTimer > control.millis()) { basic.pause(1) }
+    etHandleGroup()
+    ETgroupTimer = 0
+    ETgroupSet = false
+})
+
+input.onLogoEvent(TouchButtonEvent.Pressed, function () {
+    if (ETgroupSet) {
+        ETgroup++
+        if (ETgroup > 9) ETgroup = 1
+        radio.setGroup(ETgroup)
+    }
+    else
+        ETgroupSet = true
+    basic.showNumber(ETgroup)
+    if (!ETgroupTimer) {
+        ETgroupTimer = control.millis() + 1000
+        control.raiseEvent(ET_EVENT, 0)
+    }
+    else
+        ETgroupTimer = control.millis() + 1000
+})
+
+//##### DATA HANDLING #####\\
+
+const ET_EOM = -1
+const ET_ACK = -2
+
+interface ETradioMessages {
+    sent: string[]  // id's of sent messages that have no ACK yet
+    received: string[]	// received messages that have not been read yet
+    chunks: string[]	// temporary buffer for received chunks
+    handler: (message: string) => void // will be called when a radio message is received
+}
+
+let ETradioMsg: { [id: string]: ETradioMessages } = {}
+
+radio.onReceivedString(function (chunk: string) {
+
+    let parts = chunk.split("|")
+    if (parts.length != 3) return
+    let id = parts[0]
+    let ix = +parts[1]
+    let msg = parts[2]
+
+    // create a buffer for id if not existing
+    etradio.createBuffer(id)
+
+    // EOM handling (receiver side)
+    // (1) send ACK
+    // (2) store message or call handler
+    // see: etradio.send()
+    if (ix === ET_EOM) {
+        // (1) msg contains msg id
+        msg = id + "|" + ET_ACK.toString() + "|" + msg
+        radio.sendString(msg)
+        // (2)
+        msg = ETradioMsg[id].chunks.join("")
+        if (ETradioMsg[id].handler)
+            ETradioMsg[id].handler(msg)
+        else
+            ETradioMsg[id].received.push(msg)
+        ETradioMsg[id].chunks = []
+        return
+    }
+
+    // ACK handling (sender side)
+    // (1) clear the ACK flag when acknowledged
+    // see: etradio.send()
+    if (ix === ET_ACK) {
+        if (ETradioMsg[id] && ((ix = ETradioMsg[id].sent.indexOf(msg)) >= 0))
+            // (1)
+            ETradioMsg[id].sent.splice(ix, 1)
+        return
+    }
+
+    // CHUNK handling (receiver side)
+    ETradioMsg[id].chunks[ix] = msg
+})
+
+namespace etradio {
+
+    export function createBuffer(id: string) {
+        if (!ETradioMsg[id])
+            ETradioMsg[id] = { sent: [], received: [], chunks: [], handler: null }
+    }
+
+    export function clearBuffer(id: string) {
+        if (ETradioMsg[id])
+            delete ETradioMsg[id]
+    }
+
+    export function send(id: string, msg: string, timeout: number = 0) {
+        // messages are broadcasted
+
+        let len = Math.max(1, 15 - id.length)
+        let ix = 0
+        let chunk = ""
+        let ack_id = control.millis().toString() + Math.randomRange(0, 999).toString()
+        ack_id = ack_id.substr(0, len)
+
+        // create a buffer for id if not existing
+        createBuffer(id)
+
+        // send message in chunks
+        while (msg.length > 0) {
+            chunk = id + "|" + ix.toString() + "|" + msg.substr(0, len)
+            msg = msg.substr(len)
+            radio.sendString(chunk)
+            basic.pause(1)
+            ix += 1
+        }
+
+        // (1) raise ACK flag
+        // (2) sent ack_id so that receiver can ACK
+        // (3) wait for ACK flag being cleared by radio.onReceivedString
+        // (4) clear ACK flag in case of timeout
+        // Not fully fail save, but best in terms of successfull transmission
+        // Timeout is the savety net
+        // After timeout clear the ACK flag anyway
+
+        // (1)
+        ETradioMsg[id].sent.push(ack_id)
+
+        // (2)
+        chunk = id + "|" + ET_EOM.toString() + "|" + ack_id
+        radio.sendString(chunk)
+
+        // (3)
+        let tm = control.millis() + timeout
+        while (control.millis() < tm && ETradioMsg[id].sent.indexOf(ack_id) >= 0)
+            basic.pause(1)
+
+        // (4)
+        if ((ix = ETradioMsg[id].sent.indexOf(ack_id)) >= 0)
+            ETradioMsg[id].sent.splice(ix, 1)
+    }
+
+    export function available(id: string): boolean {
+        return !!(ETradioMsg[id] && (ETradioMsg[id].received.length > 0))
+    }
+
+    export function read(id: string): string {
+        if (!ETradioMsg[id] || !ETradioMsg[id].received.length)
+            return ""
+        let msg = ETradioMsg[id].received.shift()
+        return msg
+    }
+
+    export function registerMessageHandler(id: string, handler: (msg: string) => void) {
+        createBuffer(id)
+        ETradioMsg[id].handler = handler
+    }
+
+    export function registerGroupHandler(handler: (group: number) => void) {
+        ETgroupHandlers.push(handler)
     }
 }
 
@@ -460,10 +684,10 @@ function etTrackPosition(track: number, mask = ETtrackMask.Track2, tracktype = E
 //  END INCLUDE  //
 ///////////////////
 
-/////////////////////
-//  INCLUDE        //
-//  nezhaports.ts  //
-/////////////////////
+//////////////////////
+//  INCLUDE         //
+//  px-nezhapro.ts  //
+//////////////////////
 
 enum RJPort {
     //% block="J1"
@@ -556,7 +780,7 @@ namespace PxTrackFour {
         read(): ETtrack {
             pins.i2cWriteNumber(this.i2cAddress, 4, NumberFormat.Int8LE)
             let state = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt8LE, false)
-            basic.pause(5);
+            basic.pause(5)
             // From left to right the track sensors represent a bit in 'state'.
             // Since in enum 'ETtrack' the values 1-2-4-8-16 agree with FL-L-M-R-FR,
             // on the current 4-line track sensor:
@@ -982,10 +1206,7 @@ namespace PxDistance {
 
             // read pulse
             let d = pins.pulseIn(this.echo, PulseValue.High, 25000)
-            let version = control.hardwareVersion()
             let distance = d * 34 / 2 / 1000
-            if (version === "1")
-                distance = distance * 3 / 2
 
             if (distance === 0 || distance > 430)
                 return 999
@@ -1048,9 +1269,9 @@ namespace PxColor {
         }
 
         private i2c_read(reg: number) {
-            pins.i2cWriteNumber(this.i2cAddress, reg, NumberFormat.UInt8BE);
+            pins.i2cWriteNumber(this.i2cAddress, reg, NumberFormat.UInt8BE)
             basic.pause(1)
-            let val = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt8BE);
+            let val = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt8BE)
             return val;
         }
 
@@ -1064,7 +1285,7 @@ namespace PxColor {
             this.color_first_init = true
             // set to color mode
             let tmp = this.i2c_read(APDS9960_ENABLE) | 0x2;
-            this.i2c_write(APDS9960_ENABLE, tmp);
+            this.i2c_write(APDS9960_ENABLE, tmp)
         }
 
         constructor(i2c_address: number = 0x39) {
@@ -1093,7 +1314,7 @@ namespace PxColor {
                     buf[0] = 0x80
                     buf[1] = 0x17
                     pins.i2cWriteBuffer(this.i2cAddress, buf)
-                    basic.pause(50);
+                    basic.pause(50)
 
                     if ((this.i2c_read(0xA4) + this.i2c_read(0xA5) * 256) !== 0) {
                         this.color_new_init = true
@@ -1102,7 +1323,7 @@ namespace PxColor {
                 }
             }
             if (this.color_new_init === true) {
-                basic.pause(150);
+                basic.pause(150)
                 c = this.i2c_read(0xA6) + this.i2c_read(0xA7) * 256;
                 r = this.i2c_read(0xA0) + this.i2c_read(0xA1) * 256;
                 g = this.i2c_read(0xA2) + this.i2c_read(0xA3) * 256;
@@ -1139,7 +1360,7 @@ namespace PxColor {
                     this.init()
                 let tmp = this.i2c_read(APDS9960_STATUS) & 0x1;
                 while (!tmp) {
-                    basic.pause(5);
+                    basic.pause(5)
                     tmp = this.i2c_read(APDS9960_STATUS) & 0x1;
                 }
                 c = this.i2c_read(APDS9960_CDATAL) + this.i2c_read(APDS9960_CDATAH) * 256;
@@ -1160,6 +1381,83 @@ namespace PxColor {
 
     export function create(i2c_address: number = 0x39): Device {
         let device = new Device(i2c_address)
+        return device
+    }
+}
+
+///////////////////
+//  END INCLUDE  //
+///////////////////
+
+//////////////////
+//  INCLUDE     //
+//  et-heading  //
+//////////////////
+
+enum ETheading {
+    //% block="North"
+    //% block.loc.nl="noorden"
+    N = 0,
+    //% block="North-Northeast"
+    //% block.loc.nl="noord-noordoosten"
+    NNE = 22.5,
+    //% block="Northeast"
+    //% block.loc.nl="noordoosten"
+    NE = 45,
+    //% block="East-Northeast"
+    //% block.loc.nl="oost-noordoosten"
+    ENE = 67.5,
+    //% block="East"
+    //% block.loc.nl="oosten"
+    E = 90,
+    //% block="East-Southeast"
+    //% block.loc.nl="oost-zuidoosten"
+    ESE = 112.5,
+    //% block="Southeast"
+    //% block.loc.nl="zuidoosten"
+    SE = 135,
+    //% block="South-Southeast"
+    //% block.loc.nl="zuid-zuidoosten"
+    SSE = 157.5,
+    //% block="South"
+    //% block.loc.nl="Zuid"
+    S = 180,
+    //% block="South-Southwest"
+    //% block.loc.nl="zuid-zuidwesten"
+    SSW = 200.5,
+    //% block="Southwest"
+    //% block.loc.nl="zuidwesten"
+    SW = 225,
+    //% block="West-Southwest"
+    //% block.loc.nl="west-zuidwesten"
+    WSW = 247.5,
+    //% block="West"
+    //% block.loc.nl="westen"
+    W = 270,
+    //% block="west-northwesten"
+    //% block.loc.nl="West-Noordwest"
+    WNW = 292.5,
+    //% block="Northwest"
+    //% block.loc.nl="noordwesten"
+    NW = 315,
+    //% block="North-Northwest"
+    //% block.loc.nl="noord-noordwesten"
+    NNW = 337.5,
+}
+
+namespace EtHeading {
+
+    export class Device {
+
+        read(): ETheading {
+            let hd = Math.round(input.compassHeading() / 22.5) * 22.5
+            if (hd === 360) hd = 0
+            return hd
+        }
+    }
+
+    export function create(): Device {
+        let device = new Device()
         return device
     }
 }
@@ -1191,8 +1489,8 @@ namespace PxServo {
 
         private readAngle(): number {
             basic.pause(4)
-            let buf = pins.createBuffer(8);
-            buf[0] = 0xFF;
+            let buf = pins.createBuffer(8)
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = this.SV.Port + 1;
             buf[3] = 0x00;
@@ -1200,10 +1498,10 @@ namespace PxServo {
             buf[5] = 0x00;
             buf[6] = 0xF5;
             buf[7] = 0x00;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
-            let arr = pins.i2cReadBuffer(0x10, 4);
-            return (arr[3] << 24) | (arr[2] << 16) | (arr[1] << 8) | (arr[0]);
+            let arr = pins.i2cReadBuffer(0x10, 4)
+            return (arr[3] << 24) | (arr[2] << 16) | (arr[1] << 8) | (arr[0])
         }
 
         constructor(servo: Servo) {
@@ -1211,8 +1509,10 @@ namespace PxServo {
         }
 
         coast() {
+            // there is no special coast command
+            // work around: speed 0 causes coasting
             let buf = pins.createBuffer(8)
-            buf[0] = 0xFF;
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = this.SV.Port + 1;
             buf[3] = 0;
@@ -1220,7 +1520,7 @@ namespace PxServo {
             buf[5] = 0x00;
             buf[6] = 0x00;
             buf[7] = 0x00;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
         }
 
@@ -1237,19 +1537,19 @@ namespace PxServo {
             while (this.curangle < 0) this.curangle += 360
             angle %= 360
             let buf = pins.createBuffer(8)
-            buf[0] = 0xFF;
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = this.SV.Port + 1;
             buf[3] = 0x00;
             buf[4] = 0x5D; // absolute angle
-            buf[5] = (this.curangle >> 8) & 0XFF;
+            buf[5] = (this.curangle >> 8) & 0xFF
             // buf[6]:
             // 1 = short route
             // 2 = clockwise
             // 3 = anticlockwise
             buf[6] = (rotation === ETrotate.Clockwise ? 2 : 3)
-            buf[7] = this.curangle & 0XFF;
-            pins.i2cWriteBuffer(0x10, buf);
+            buf[7] = this.curangle & 0xFF
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
         }
 
@@ -1303,22 +1603,22 @@ namespace PxWheelsTwo {
             // speed in %
             if (speed > 100) speed = 100
             let buf = pins.createBuffer(8)
-            buf[0] = 0xFF;
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = motor + 1;
             buf[3] = rotation - 2;
             buf[4] = 0x60;
-            buf[5] = Math.floor(speed);
+            buf[5] = Math.floor(speed)
             buf[6] = 0xF5;
             buf[7] = 0x00;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
         }
 
         private _read(): [number, number] {
             // speed in rotations per second (rps)
             let buf = pins.createBuffer(8)
-            buf[0] = 0xFF;
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = this.ML.Port + 1;
             buf[3] = 0x00;
@@ -1326,15 +1626,15 @@ namespace PxWheelsTwo {
             buf[5] = 0x00;
             buf[6] = 0xF5;
             buf[7] = 0x00;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
-            let arr = pins.i2cReadBuffer(0x10, 2);
-            let retData = (arr[1] << 8) | (arr[0]);
+            let arr = pins.i2cReadBuffer(0x10, 2)
+            let retData = (arr[1] << 8) | (arr[0])
             let left = Math.floor(retData / 3.6) * 0.01;
             buf[2] = this.MR.Port + 1
-            pins.i2cWriteBuffer(0x10, buf);
-            arr = pins.i2cReadBuffer(0x10, 2);
-            retData = (arr[1] << 8) | (arr[0]);
+            pins.i2cWriteBuffer(0x10, buf)
+            arr = pins.i2cReadBuffer(0x10, 2)
+            retData = (arr[1] << 8) | (arr[0])
             let right = Math.floor(retData / 3.6) * 0.01;
             return [left, right]
         }
@@ -1364,7 +1664,7 @@ namespace PxWheelsTwo {
 
         stop() {
             let buf = pins.createBuffer(8)
-            buf[0] = 0xFF;
+            buf[0] = 0xFF
             buf[1] = 0xF9;
             buf[2] = this.ML.Port + 1;
             buf[3] = 0x00;
@@ -1372,10 +1672,10 @@ namespace PxWheelsTwo {
             buf[5] = 0x00;
             buf[6] = 0xF5;
             buf[7] = 0x00;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
             buf[2] = this.MR.Port + 1;
-            pins.i2cWriteBuffer(0x10, buf);
+            pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
         }
 
@@ -1414,7 +1714,10 @@ namespace PxWheelsTwo {
 //  END INCLUDE  //
 ///////////////////
 
-//###########################################################
+/////////////////
+//  EXTENSION  //
+//  etbuggy.ts //
+/////////////////
 
 enum ETfield {
     //% block="in the field"
@@ -1423,9 +1726,9 @@ enum ETfield {
     //% block="on the line"
     //% block.loc.nl="op de lijn"
     OnBorder,
-    //% block="out of the field"
+    //% block="outside the field"
     //% block.loc.nl="buiten het veld"
-    OutOfField,
+    OutsideField,
 }
 
 enum ETdistSens {
@@ -1442,13 +1745,15 @@ enum ETdistSens {
 //% block.loc.nl="Buggy"
 namespace EtBuggy {
 
-    let drive = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
+    let car = PxWheelsTwo.create({ Port: MotorPort.M4, Revert: true },
         { Port: MotorPort.M1, Revert: false })
-    let servo = PxServo.create({ Port: ServoPort.S2, Revert: false })
+    export let servo = PxServo.create({ Port: ServoPort.S2, Revert: false })
     let tracksens = PxTrackFour.create()
     let lidarsens = EtDistance.create()
     let ultrasonesens = PxDistance.create(RJPort.J1)
     let colorsens = PxColor.create()
+    let headingsens = EtHeading.create()
+
     let excludeservo = false
     let tracktype = ETtrackType.DarkOnLight
     let trackcolor = ETcolor.Black
@@ -1456,23 +1761,37 @@ namespace EtBuggy {
     let cmnear = 30
     let cmfar = 200
     let cmmax = 250
-    drive.setDiameter(67)
+    car.setDiameter(67)
     servo.setAngleMode(ETangle.Relative)
 
     let speedPerc = 0
     let bendPerc = 0
 
-    function go() {
-        let speedL = Math.abs(speedPerc)
-        let speedR = Math.abs(speedPerc)
-        let delta = speedR * bendPerc / 200
-        speedL += delta
-        speedR -= delta
-        if (speedPerc < 0) {
-            speedL = -speedL
-            speedR = -speedR
+    function go(): void {
+        speedPerc = Math.max(-100, Math.min(100, speedPerc))
+        bendPerc = Math.max(-100, Math.min(100, bendPerc))
+
+        let bend = bendPerc / 100 // -1 .. +1
+        let left = speedPerc
+        let right = speedPerc
+
+        if (bend > 0) // turn right from 0 to +speedPerc
+            right = speedPerc * (1 - bend)
+        else
+            if (bend < 0) // turn left from 0 to +speedPerc
+                left = speedPerc * (1 + bend)
+
+        if (Math.abs(bend) > 0.5) {
+            let spinFactor = (Math.abs(bend) - 0.5) * 2 // 0..1
+            if (bend > 0)
+                // turn right from 0 to -speedPerc
+                right = speedPerc * (1 - 2 * spinFactor)
+            else
+                // turn left from 0 to -speedPerc
+                left = speedPerc * (1 - 2 * spinFactor)
         }
-        drive.speed(speedL, speedR)
+
+        car.speed(left, right)
     }
 
     // because of the construction of a model, direct access
@@ -1481,6 +1800,20 @@ namespace EtBuggy {
     // exclude direct access
     export function excludeServo() {
         excludeservo = true
+    }
+
+    //% subcategory="Windroos"
+    //% block="is driving to the %heading"
+    //% block.loc.nl="gaat naar het %heading"
+    export function isHeading(heading: ETheading): boolean {
+        return (headingsens.read() === heading)
+    }
+
+    //% subcategory="Windroos"
+    //% block="drive direction"
+    //% block.loc.nl="rijrichting"
+    export function readHeading(): ETheading {
+        return headingsens.read()
     }
 
     //% subcategory="Afstand"
@@ -1520,15 +1853,15 @@ namespace EtBuggy {
     }
 
     //% subcategory="Veld"
-    //% block="the buggy runs over %color"
-    //% block.loc.nl="de buggy rijdt over %color"
+    //% block="is driving over %color"
+    //% block.loc.nl="rijdt over %color"
     export function isFieldColor(color: ETcolor): boolean {
         return (colorsens.read() === color)
     }
 
     //% subcategory="Veld"
-    //% block="the buggy runs %pos"
-    //% block.loc.nl="de buggy rijdt %pos"
+    //% block="is driving %pos"
+    //% block.loc.nl="rijdt %pos"
     export function isFieldPos(pos: ETfield): boolean {
         return (pos === readFieldPos())
     }
@@ -1545,15 +1878,15 @@ namespace EtBuggy {
     //% block.loc.nl="veldpositie"
     export function readFieldPos(): ETfield {
         if (colorsens.read() === trackcolor)
-            return ETfield.OutOfField
+            return ETfield.OutsideField
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
         return ETfield.OnBorder
     }
 
     //% subcategory="Lijn"
-    //% block="the buggy is %pos"
-    //% block.loc.nl="de buggy is %pos"
+    //% block="is driving %pos"
+    //% block.loc.nl="rijdt %pos"
     export function isLinePos(pos: ETtrack): boolean {
         return (tracksens.read() === pos)
     }
@@ -1621,28 +1954,59 @@ namespace EtBuggy {
         servo.angle(dir === ETmoveZ.Up ? ETrotate.Clockwise : ETrotate.AntiClockwise, angle)
     }
 
+    //% block="turn %rot to the %heading"
+    //% block.loc.nl="keer %rot naar het %heading"
+    export function turnTo(rot: ETrotate, heading: ETheading) {
+        let speedL, speedR: number
+        if (rot == ETrotate.Clockwise) {
+            speedL = 30
+            speedR = -30
+        }
+        else {
+            speedL = -30
+            speedR = 30
+        }
+        car.speed(speedL, speedR)
+        let tm = control.millis() + 5000
+        while (headingsens.read() !== heading && tm > control.millis())
+            basic.pause(1)
+    }
+
     //% block="steer %steer with a %bend \\% turn"
     //% block.loc.nl="stuur %steer met een %bend \\% bocht"
-    //% bend.min = 0 bend.max=100 bend.defl=30
+    //% bend.min = 0 bend.max=100 bend.defl=25
     export function bend(steer: ETturn, bend: number) {
+        if (bend < 0) bend = 0
+        if (bend > 100) bend = 100
         bendPerc = (steer === ETturn.Left ? -bend : bend)
+        go()
+    }
+
+    //% block="drive straight"
+    //% block.loc.nl="rijd rechtuit"
+    export function straight() {
+        bendPerc = 0
         go()
     }
 
     //% block="drive %dir with %speed \\% speed"
     //% block.loc.nl="rijd %dir met %speed \\% snelheid"
     //% speed.min = 0 speed.max=100 speed.defl=30
-    export function run(dir: ETmoveY, speed: number) {
+    export function drive(dir: ETmoveY, speed: number) {
+        if (speed < 0) speed = 0
+        if (speed > 100) speed = 100
         speedPerc = (dir === ETmoveY.Forward ? speed : -speed)
         go()
     }
 
     //% block="stop"
     //% block.loc.nl="stop"
-    //% bend.min = 0 bend.max=100 bend.defl=30
     export function stop() {
         speedPerc = 0
-        bendPerc = 0
         go()
     }
 }
+
+/////////////////////
+//  END EXTENSION  //
+/////////////////////
