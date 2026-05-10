@@ -214,45 +214,27 @@ enum ETcolor {
     //% block="yellow"
     //% block.loc.nl="geel"
     Yellow = 4,
-    //% block="cyan"
-    //% block.loc.nl="cyaan"
+    //% block="mint"
+    //% block.loc.nl="mint"
     Cyan = 5,
-    //% block="magenta"
-    //% block.loc.nl="magenta"
+    //% block="pink"
+    //% block.loc.nl="roze"
     Magenta = 6,
     //% block="black"
     //% block.loc.nl="zwart"
     Black = 7,
-    //% block="dark grey"
-    //% block.loc.nl="donkergrijs"
-    DarkGrey = 8,
     //% block="grey"
     //% block.loc.nl="grijs"
-    Grey = 9,
-    //% block="light grey"
-    //% block.loc.nl="lichtgrijs"
-    LightGrey = 10,
+    Grey = 8,
     //% block="white"
     //% block.loc.nl="wit"
-    White = 11,
+    White = 9,
     //% block="orange"
     //% block.loc.nl="oranje"
-    Orange = 12,
-    //% block="brown"
-    //% block.loc.nl="bruin"
-    Brown = 13,
-    //% block="pink"
-    //% block.loc.nl="roze"
-    Pink = 14,
-    //% block="indigo"
-    //% block.loc.nl="indigo"
-    Indigo = 15,
-    //% block="violet"
-    //% block.loc.nl="violet"
-    Violet = 16,
+    Orange = 10,
     //% block="purple"
     //% block.loc.nl="paars"
-    Purple = 17,
+    Purple = 11,
 }
 
 function etRgbValue(red: number, green: number, blue: number): number {
@@ -285,15 +267,9 @@ function etFromColor(color: ETcolor): number {
         case ETcolor.Cyan: val = 0x00FFFF; break;
         case ETcolor.Magenta: val = 0xFF00FF; break;
         case ETcolor.Black: val = 0x000000; break;
-        case ETcolor.DarkGrey: val = 0xA9A9A9; break;
         case ETcolor.Grey: val = 0x808080; break;
-        case ETcolor.LightGrey: val = 0xD3D3D3; break;
         case ETcolor.White: val = 0xFFFFFF; break;
         case ETcolor.Orange: val = 0xFFA500; break;
-        case ETcolor.Brown: val = 0xA52A2A; break;
-        case ETcolor.Pink: val = 0xFFC0CB; break;
-        case ETcolor.Indigo: val = 0x4b0082; break;
-        case ETcolor.Violet: val = 0x8a2be2; break;
         case ETcolor.Purple: val = 0x800080; break;
     }
     return val
@@ -1730,6 +1706,9 @@ enum ETfield {
     //% block="in the field"
     //% block.loc.nl="in het veld"
     InField,
+    //% block="on a marker"
+    //% block.loc.nl="op een markering"
+    OnMarker,
     //% block="on the line"
     //% block.loc.nl="op de lijn"
     OnBorder,
@@ -1747,6 +1726,18 @@ enum ETdistSens {
     Lidar,
 }
 
+let etBuggyOnRedHandler: () => void
+let etBuggyOnGreenHandler: () => void
+let etBuggyOnBlueHandler: () => void
+let etBuggyOnYellowHandler: () => void
+let etBuggyOnCyanHandler: () => void
+let etBuggyOnMagentaHandler: () => void
+let etBuggyOnBlackHandler: () => void
+let etBuggyOnGreyHandler: () => void
+let etBuggyOnWhiteHandler: () => void
+let etBuggyOnOrangeHandler: () => void
+let etBuggyOnPurpleHandler: () => void
+
 //% color="#FF8844" icon="\uf1b9"
 //% block="Buggy"
 //% block.loc.nl="Buggy"
@@ -1762,8 +1753,9 @@ namespace EtBuggy {
     let headingsens = EtHeading.create()
 
     let excludeservo = false
-    let tracktype = ETtrackType.DarkOnLight
-    let trackcolor = ETcolor.Black
+    let tracktype: ETtrackType
+    let trackcolor: ETcolor
+    let floorcolor: ETcolor
     let islidar = true
     let cmnear = 30
     let cmfar = 200
@@ -1773,6 +1765,31 @@ namespace EtBuggy {
 
     let speedPerc = 0
     let bendPerc = 0
+
+    basic.forever(function () {
+        let handler: () => void
+        let color = colorsens.read()
+        if (color == floorcolor || color == trackcolor)
+            return
+        switch (color) {
+            case ETcolor.Red: handler = etBuggyOnRedHandler; break;
+            case ETcolor.Green: handler = etBuggyOnGreenHandler; break;
+            case ETcolor.Blue: handler = etBuggyOnBlueHandler; break;
+            case ETcolor.Yellow: handler = etBuggyOnYellowHandler; break;
+            case ETcolor.Cyan: handler = etBuggyOnCyanHandler; break;
+            case ETcolor.Magenta: handler = etBuggyOnMagentaHandler; break;
+            case ETcolor.Black: handler = etBuggyOnBlackHandler; break;
+            case ETcolor.Grey: handler = etBuggyOnGreyHandler; break;
+            case ETcolor.White: handler = etBuggyOnWhiteHandler; break;
+            case ETcolor.Orange: handler = etBuggyOnOrangeHandler; break;
+            case ETcolor.Purple: handler = etBuggyOnPurpleHandler; break;
+        }
+        if (handler) handler()
+        else {
+            stop()
+            basic.showIcon(IconNames.No)
+        }
+    })
 
     function go(): void {
         speedPerc = Math.max(-100, Math.min(100, speedPerc))
@@ -1884,8 +1901,11 @@ namespace EtBuggy {
     //% block="field position"
     //% block.loc.nl="veldpositie"
     export function readFieldPos(): ETfield {
-        if (colorsens.read() === trackcolor)
+        let color = colorsens.read()
+        if (color === trackcolor)
             return ETfield.OutsideField
+        if (color !== floorcolor)
+            return ETfield.OnMarker
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
         return ETfield.OnBorder
@@ -1935,12 +1955,19 @@ namespace EtBuggy {
     }
 
     //% subcategory="Instellingen"
-    //% block="the line is %line having color %clr"
-    //% block.loc.nl="de lijn is %line met kleur %clr"
-    export function setTrackType(line: ETtrackType, clr: ETcolor) {
-        trackcolor = clr
+    //% block="the line is %line having color %color"
+    //% block.loc.nl="de lijn is %line met kleur %color"
+    export function setTrackType(line: ETtrackType, color: ETcolor) {
+        trackcolor = color
         tracktype = line
         tracksens.setTrackType(line)
+    }
+
+    //% subcategory="Instellingen"
+    //% block="the floor has color %color"
+    //% block.loc.nl="de vloer heeft kleur %color"
+    export function setFloorColor(color: ETcolor) {
+        floorcolor = color
     }
 
     //% block="release the power from the work motor"
@@ -2012,6 +2039,26 @@ namespace EtBuggy {
         speedPerc = 0
         go()
     }
+
+    //% color="#802080"
+    //% block="when drives over %color"
+    //% block.loc.nl="wanneer de buggy over %color rijdt"
+    export function onColor(color: ETcolor, code: () => void) {
+        switch (color) {
+            case ETcolor.Red: etBuggyOnRedHandler = code; break;
+            case ETcolor.Green: etBuggyOnGreenHandler = code; break;
+            case ETcolor.Blue: etBuggyOnBlueHandler = code; break;
+            case ETcolor.Yellow: etBuggyOnYellowHandler = code; break;
+            case ETcolor.Cyan: etBuggyOnCyanHandler = code; break;
+            case ETcolor.Magenta: etBuggyOnMagentaHandler = code; break;
+            case ETcolor.Black: etBuggyOnBlackHandler = code; break;
+            case ETcolor.Grey: etBuggyOnGreyHandler = code; break;
+            case ETcolor.White: etBuggyOnWhiteHandler = code; break;
+            case ETcolor.Orange: etBuggyOnOrangeHandler = code; break;
+            case ETcolor.Purple: etBuggyOnPurpleHandler = code; break;
+        }
+    }
+
 }
 
 /////////////////////
