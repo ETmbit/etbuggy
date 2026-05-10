@@ -299,16 +299,23 @@ function etFromColor(color: ETcolor): number {
     return val
 }
 
-function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
+function etFromRgbValues(red: number, green: number, blue: number, clearch?: number): ETcolor {
 
     let max = Math.max(red, Math.max(green, blue))
     let min = Math.min(red, Math.min(green, blue))
 
-    if (Math.abs(max - min) < 60) {
-        let bright = Math.round(0.21 * red + 0.72 * green + 0.07 * blue)
-        if (bright > 130) return ETcolor.White
-        if (bright < 100) return ETcolor.Black
-        return ETcolor.Grey
+    if (Math.abs(max - min) < 40) {
+        if (clearch == undefined) {
+            let bright = Math.round(0.21 * red + 0.72 * green + 0.07 * blue)
+            if (bright > 100) return ETcolor.White
+            if (bright < 90) return ETcolor.Black
+            return ETcolor.Grey
+        }
+        else {
+            if (clearch > 75) return ETcolor.White
+            if (clearch < 30) return ETcolor.Black
+            return ETcolor.Grey
+        }
     }
 
     let hue: number
@@ -319,6 +326,7 @@ function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
     if (hue < 0) hue += 360
 
     // translate hue to color names
+    if (hue < 20) return ETcolor.Red
     if (hue < 50) return ETcolor.Orange
     if (hue < 100) return ETcolor.Yellow
     if (hue < 190) return ETcolor.Green
@@ -1374,7 +1382,7 @@ namespace PxColor {
             g = Math.map(g * 255 / avg, 0, 765, 0, 255);
             b = Math.map(b * 255 / avg, 0, 765, 0, 255);
 
-            return etFromRgbValues(r, g, b)
+            return etFromRgbValues(r, g, b, c / 16)
         }
     }
 
