@@ -1874,15 +1874,15 @@ namespace EtBuggy {
     }
 
     //% subcategory="Veld"
-    //% block="is driving over %color"
-    //% block.loc.nl="rijdt over %color"
+    //% block="the buggy drives over %color"
+    //% block.loc.nl="de buggy over %color rijdt"
     export function isFieldColor(color: ETcolor): boolean {
         return (colorsens.read() === color)
     }
 
     //% subcategory="Veld"
-    //% block="is driving %pos"
-    //% block.loc.nl="rijdt %pos"
+    //% block="the buggy drives %pos"
+    //% block.loc.nl="de buggy %pos rijdt"
     export function isFieldPos(pos: ETfield): boolean {
         return (pos === readFieldPos())
     }
@@ -1909,8 +1909,8 @@ namespace EtBuggy {
     }
 
     //% subcategory="Lijn"
-    //% block="is driving %pos"
-    //% block.loc.nl="rijdt %pos"
+    //% block="the buggy drives %pos"
+    //% block.loc.nl="de buggy %pos rijdt"
     export function isLinePos(pos: ETtrack): boolean {
         return (tracksens.read() === pos)
     }
