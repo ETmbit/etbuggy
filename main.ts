@@ -300,17 +300,18 @@ function etFromColor(color: ETcolor): number {
 }
 
 function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
-    let max = -1
-    let min = -1
-    let hue = 0
 
-    if (red > green && red > blue) max = red
-    if (green > red && green > blue) max = green
-    if (blue > red && blue > green) max = blue
-    if (red < green && red < blue) min = red
-    if (green < red && green < blue) min = green
-    if (blue < red && blue < green) min = blue
+    let max = Math.max(red, Math.max(green, blue))
+    let min = Math.min(red, Math.min(green, blue))
 
+    if (Math.abs(max - min) < 60) {
+        let bright = Math.round(0.21 * red + 0.72 * green + 0.07 * blue)
+        if (bright > 130) return ETcolor.White
+        if (bright < 100) return ETcolor.Black
+        return ETcolor.Grey
+    }
+
+    let hue: number
     if (red == max) hue = (0 + (green - blue) / (max - min)) * 60
     if (green == max) hue = (2 + (blue - red) / (max - min)) * 60
     if (blue == max) hue = (4 + (red - green) / (max - min)) * 60
@@ -318,18 +319,14 @@ function etFromRgbValues(red: number, green: number, blue: number): ETcolor {
     if (hue < 0) hue += 360
 
     // translate hue to color names
-    if (hue == 0) return ETcolor.White
-    if (hue < 5) return ETcolor.Orange
-    if (hue < 30) return ETcolor.Brown
+    if (hue < 50) return ETcolor.Orange
     if (hue < 100) return ETcolor.Yellow
     if (hue < 190) return ETcolor.Green
     if (hue < 206) return ETcolor.Cyan
-    if (hue < 213) return ETcolor.Blue
-    if (hue < 217) return ETcolor.Black
-    if (hue < 230) return ETcolor.Indigo
-    if (hue < 255) return ETcolor.Purple
-    if (hue < 272) return ETcolor.Pink
+    if (hue < 230) return ETcolor.Blue
+    if (hue < 272) return ETcolor.Purple
     if (hue < 300) return ETcolor.Magenta
+
     return ETcolor.Red
 }
 
@@ -1881,8 +1878,8 @@ namespace EtBuggy {
     export function readFieldPos(): ETfield {
         if (colorsens.read() === trackcolor)
             return ETfield.OutsideField
-//        if (tracksens.read() === ETtrack.OffTrack)
-//            return ETfield.InField
+        if (tracksens.read() === ETtrack.OffTrack)
+            return ETfield.InField
         return ETfield.OnBorder
     }
 
@@ -2012,15 +2009,3 @@ namespace EtBuggy {
 /////////////////////
 //  END EXTENSION  //
 /////////////////////
-
-
-
-basic.forever(function() {
-    if (EtBuggy.isFieldPos(ETfield.InField))
-        basic.showIcon(IconNames.Yes)
-    if (EtBuggy.isFieldPos(ETfield.OnBorder))
-        basic.showString("?")
-    if (EtBuggy.isFieldPos(ETfield.OutsideField))
-        basic.showIcon(IconNames.No)
-    basic.showIcon(IconNames.Heart)
-})
