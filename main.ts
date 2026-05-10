@@ -593,7 +593,7 @@ namespace etradio {
 
 enum ETtrackType {
     //% block="calibrated"
-    //% block.loc.nl="gecalibreerd"
+    //% block.loc.nl="gekalibreerd"
     Calibrated = 0,
     //% block="dark on light"
     //% block.loc.nl="donker op licht"
