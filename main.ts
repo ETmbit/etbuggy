@@ -1931,7 +1931,7 @@ namespace EtBuggy {
 
     //% subcategory="Instellingen"
     //% block="close is < %close cm and far is > %far cm"
-    //% block.loc.nl="dichtbij is < %close cm en ver is > %far cm"
+    //% block.loc.nl="dichtbij is < %close cm en ver weg is > %far cm"
     export function setDistances(close: number, far: number) {
         cmnear = close
         cmfar = far
@@ -1945,8 +1945,8 @@ namespace EtBuggy {
     }
 
     //% subcategory="Instellingen"
-    //% block="use servo with %mode angles"
-    //% block.loc.nl="gebruik de servo met %mode hoeken"
+    //% block="use the work motor with %mode angles"
+    //% block.loc.nl="gebruik de werkmotor met %mode hoeken"
     export function setAngleMode(mode: ETangle) {
         servo.setAngleMode(mode)
     }
@@ -1961,8 +1961,8 @@ namespace EtBuggy {
     }
 
     //% subcategory="Instellingen"
-    //% block="the floor has color %color"
-    //% block.loc.nl="de vloer heeft kleur %color"
+    //% block="the field has color %color"
+    //% block.loc.nl="het veld heeft kleur %color"
     export function setFloorColor(color: ETcolor) {
         floorcolor = color
     }
