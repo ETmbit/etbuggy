@@ -2003,6 +2003,27 @@ namespace EtBuggy {
             basic.pause(1)
     }
 
+    //% block="turn around %rot"
+    //% block.loc.nl="keer %rot om"
+    export function turnAround(rot: ETrotate) {
+        let speedL, speedR: number
+        let heading = headingsens.read() + 180
+        if (heading > 360) heading -= 360
+        if (rot == ETrotate.Clockwise) {
+            speedL = 30
+            speedR = -30
+        }
+        else {
+            speedL = -30
+            speedR = 30
+        }
+        car.speed(speedL, speedR)
+        let tm = control.millis() + 5000
+        while (headingsens.read() !== heading && tm > control.millis())
+            basic.pause(1)
+        go()
+    }
+
     //% block="steer %steer with a %bend \\% turn"
     //% block.loc.nl="stuur %steer met een %bend \\% bocht"
     //% bend.min = 0 bend.max=100 bend.defl=25
