@@ -1894,6 +1894,14 @@ namespace EtBuggy {
     }
 
     //% subcategory="Veld"
+    //% color="#802080"
+    //% block="when the buggy touches the border"
+    //% block.loc.nl="wanneer de buggy de lijn raakt"
+    export function onFieldBorder(code: () => void) {
+        etBuggyOnBorderHander = code
+    }
+
+    //% subcategory="Veld"
     //% block="the buggy drives over %color"
     //% block.loc.nl="de buggy over %color rijdt"
     export function isFieldColor(color: ETcolor): boolean {
@@ -1926,14 +1934,6 @@ namespace EtBuggy {
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
         return ETfield.OnBorder
-    }
-
-    //% subcategory="Lijn"
-    //% color="#802080"
-    //% block="when the buggy touches the border"
-    //% block.loc.nl="wanneer de buggy de lijn raakt"
-    export function onBorder(code: () => void) {
-        etBuggyOnBorderHander = code
     }
 
     //% subcategory="Lijn"
