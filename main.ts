@@ -223,18 +223,15 @@ enum ETcolor {
     //% block="black"
     //% block.loc.nl="zwart"
     Black = 7,
-    //% block="grey"
-    //% block.loc.nl="grijs"
-    Grey = 8,
     //% block="white"
     //% block.loc.nl="wit"
-    White = 9,
+    White = 8,
     //% block="orange"
     //% block.loc.nl="oranje"
-    Orange = 10,
+    Orange = 9,
     //% block="purple"
     //% block.loc.nl="paars"
-    Purple = 11,
+    Purple = 10,
 }
 
 function etRgbValue(red: number, green: number, blue: number): number {
@@ -267,7 +264,6 @@ function etFromColor(color: ETcolor): number {
         case ETcolor.Cyan: val = 0x00FFFF; break;
         case ETcolor.Magenta: val = 0xFF00FF; break;
         case ETcolor.Black: val = 0x000000; break;
-        case ETcolor.Grey: val = 0x808080; break;
         case ETcolor.White: val = 0xFFFFFF; break;
         case ETcolor.Orange: val = 0xFFA500; break;
         case ETcolor.Purple: val = 0x800080; break;
@@ -283,14 +279,12 @@ function etFromRgbValues(red: number, green: number, blue: number, clearch?: num
     if (Math.abs(max - min) < 60) {
         if (clearch == undefined) {
             let bright = Math.round(0.21 * red + 0.72 * green + 0.07 * blue)
-            if (bright > 100) return ETcolor.White
-            if (bright < 90) return ETcolor.Black
-            return ETcolor.Grey
+            if (bright > 95) return ETcolor.White
+            else return ETcolor.Black
         }
         else {
-            if (clearch > 75) return ETcolor.White
-            if (clearch < 30) return ETcolor.Black
-            return ETcolor.Grey
+            if (clearch > 60) return ETcolor.White
+            else return ETcolor.Black
         }
     }
 
@@ -1733,7 +1727,6 @@ let etBuggyOnYellowHandler: () => void
 let etBuggyOnCyanHandler: () => void
 let etBuggyOnMagentaHandler: () => void
 let etBuggyOnBlackHandler: () => void
-let etBuggyOnGreyHandler: () => void
 let etBuggyOnWhiteHandler: () => void
 let etBuggyOnOrangeHandler: () => void
 let etBuggyOnPurpleHandler: () => void
@@ -1755,7 +1748,8 @@ namespace EtBuggy {
     let excludeservo = false
     let tracktype: ETtrackType
     let trackcolor: ETcolor
-    let floorcolor: ETcolor
+    let fieldcolor: ETcolor
+    let lastcolor: ETcolor = 0
     let islidar = true
     let cmnear = 30
     let cmfar = 200
@@ -1769,8 +1763,14 @@ namespace EtBuggy {
     basic.forever(function () {
         let handler: () => void
         let color = colorsens.read()
-        if (color == floorcolor || color == trackcolor)
+        if (color == fieldcolor || color == lastcolor)
             return
+        if (color == trackcolor) {
+            // outside field status
+            // even if a handler is defined, it should not be called
+            stop()
+            return
+        }
         switch (color) {
             case ETcolor.Red: handler = etBuggyOnRedHandler; break;
             case ETcolor.Green: handler = etBuggyOnGreenHandler; break;
@@ -1779,13 +1779,13 @@ namespace EtBuggy {
             case ETcolor.Cyan: handler = etBuggyOnCyanHandler; break;
             case ETcolor.Magenta: handler = etBuggyOnMagentaHandler; break;
             case ETcolor.Black: handler = etBuggyOnBlackHandler; break;
-            case ETcolor.Grey: handler = etBuggyOnGreyHandler; break;
             case ETcolor.White: handler = etBuggyOnWhiteHandler; break;
             case ETcolor.Orange: handler = etBuggyOnOrangeHandler; break;
             case ETcolor.Purple: handler = etBuggyOnPurpleHandler; break;
         }
         if (handler) handler()
         else stop()
+        lastcolor = color
     })
 
     function go(): void {
@@ -1901,7 +1901,7 @@ namespace EtBuggy {
         let color = colorsens.read()
         if (color === trackcolor)
             return ETfield.OutsideField
-        if (color !== floorcolor)
+        if (color !== fieldcolor)
             return ETfield.OnMarker
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
@@ -1963,8 +1963,8 @@ namespace EtBuggy {
     //% subcategory="Instellingen"
     //% block="the field has color %color"
     //% block.loc.nl="het veld heeft kleur %color"
-    export function setFloorColor(color: ETcolor) {
-        floorcolor = color
+    export function setFieldColor(color: ETcolor) {
+        fieldcolor = color
     }
 
     //% block="release the power from the work motor"
@@ -1975,6 +1975,7 @@ namespace EtBuggy {
 
     //% block="turn the work motor %angle degrees %dir"
     //% block.loc.nl="draai de werkmotor %angle graden %dir"
+    //% angle.min=0 angle.max=360
     export function turnServo(angle: number, dir: ETmoveZ) {
         if (excludeservo) {
             basic.showString("no servo access")
@@ -2001,27 +2002,26 @@ namespace EtBuggy {
         let tm = control.millis() + 5000
         while (headingsens.read() !== heading && tm > control.millis())
             basic.pause(1)
+        go()
     }
 
-    //% block="turn around %rot"
-    //% block.loc.nl="keer %rot terug"
-    export function turnAround(rot: ETrotate) {
+    //% block="turn %rot with %angle º"
+    //% block.loc.nl="keer %rot met %angle º"
+    //% angle.min=0 angle.max=360
+    export function turnAngle(rot: ETrotate, angle: number) {
+        let heading = headingsens.read() + (rot == ETrotate.Clockwise ? angle : -angle)
+        if (heading < 0) heading += 360
+        if (heading > 360) heading -= 360
+        turnTo(rot, heading)
+    }
+
+    //% block="turn around"
+    //% block.loc.nl="keer om"
+    export function turnAround() {
         let speedL, speedR: number
         let heading = headingsens.read() + 180
         if (heading > 360) heading -= 360
-        if (rot == ETrotate.Clockwise) {
-            speedL = 30
-            speedR = -30
-        }
-        else {
-            speedL = -30
-            speedR = 30
-        }
-        car.speed(speedL, speedR)
-        let tm = control.millis() + 5000
-        while (headingsens.read() !== heading && tm > control.millis())
-            basic.pause(1)
-        go()
+        turnTo(ETrotate.Clockwise, heading)
     }
 
     //% block="steer %steer with a %bend \\% turn"
@@ -2070,7 +2070,6 @@ namespace EtBuggy {
             case ETcolor.Cyan: etBuggyOnCyanHandler = code; break;
             case ETcolor.Magenta: etBuggyOnMagentaHandler = code; break;
             case ETcolor.Black: etBuggyOnBlackHandler = code; break;
-            case ETcolor.Grey: etBuggyOnGreyHandler = code; break;
             case ETcolor.White: etBuggyOnWhiteHandler = code; break;
             case ETcolor.Orange: etBuggyOnOrangeHandler = code; break;
             case ETcolor.Purple: etBuggyOnPurpleHandler = code; break;
