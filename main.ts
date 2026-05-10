@@ -1730,6 +1730,7 @@ let etBuggyOnBlackHandler: () => void
 let etBuggyOnWhiteHandler: () => void
 let etBuggyOnOrangeHandler: () => void
 let etBuggyOnPurpleHandler: () => void
+let etBuggyOnBorderHander: () => void
 
 //% color="#FF8844" icon="\uf1b9"
 //% block="Buggy"
@@ -1874,6 +1875,25 @@ namespace EtBuggy {
     }
 
     //% subcategory="Veld"
+    //% color="#802080"
+    //% block="when the buggy drives over %color"
+    //% block.loc.nl="wanneer de buggy over %color rijdt"
+    export function onFieldColor(color: ETcolor, code: () => void) {
+        switch (color) {
+            case ETcolor.Red: etBuggyOnRedHandler = code; break;
+            case ETcolor.Green: etBuggyOnGreenHandler = code; break;
+            case ETcolor.Blue: etBuggyOnBlueHandler = code; break;
+            case ETcolor.Yellow: etBuggyOnYellowHandler = code; break;
+            case ETcolor.Cyan: etBuggyOnCyanHandler = code; break;
+            case ETcolor.Magenta: etBuggyOnMagentaHandler = code; break;
+            case ETcolor.Black: etBuggyOnBlackHandler = code; break;
+            case ETcolor.White: etBuggyOnWhiteHandler = code; break;
+            case ETcolor.Orange: etBuggyOnOrangeHandler = code; break;
+            case ETcolor.Purple: etBuggyOnPurpleHandler = code; break;
+        }
+    }
+
+    //% subcategory="Veld"
     //% block="the buggy drives over %color"
     //% block.loc.nl="de buggy over %color rijdt"
     export function isFieldColor(color: ETcolor): boolean {
@@ -1906,6 +1926,14 @@ namespace EtBuggy {
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
         return ETfield.OnBorder
+    }
+
+    //% subcategory="Lijn"
+    //% color="#802080"
+    //% block="when the buggy touches the border"
+    //% block.loc.nl="wanneer de buggy de lijn raakt"
+    export function onBorder(code: () => void) {
+        etBuggyOnBorderHander = code
     }
 
     //% subcategory="Lijn"
@@ -2056,24 +2084,6 @@ namespace EtBuggy {
     export function stop() {
         speedPerc = 0
         go()
-    }
-
-    //% color="#802080"
-    //% block="when drives over %color"
-    //% block.loc.nl="wanneer de buggy over %color rijdt"
-    export function onColor(color: ETcolor, code: () => void) {
-        switch (color) {
-            case ETcolor.Red: etBuggyOnRedHandler = code; break;
-            case ETcolor.Green: etBuggyOnGreenHandler = code; break;
-            case ETcolor.Blue: etBuggyOnBlueHandler = code; break;
-            case ETcolor.Yellow: etBuggyOnYellowHandler = code; break;
-            case ETcolor.Cyan: etBuggyOnCyanHandler = code; break;
-            case ETcolor.Magenta: etBuggyOnMagentaHandler = code; break;
-            case ETcolor.Black: etBuggyOnBlackHandler = code; break;
-            case ETcolor.White: etBuggyOnWhiteHandler = code; break;
-            case ETcolor.Orange: etBuggyOnOrangeHandler = code; break;
-            case ETcolor.Purple: etBuggyOnPurpleHandler = code; break;
-        }
     }
 
 }
