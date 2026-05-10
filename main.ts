@@ -1785,10 +1785,7 @@ namespace EtBuggy {
             case ETcolor.Purple: handler = etBuggyOnPurpleHandler; break;
         }
         if (handler) handler()
-        else {
-            stop()
-            basic.showIcon(IconNames.No)
-        }
+        else stop()
     })
 
     function go(): void {
