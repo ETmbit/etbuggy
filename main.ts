@@ -1968,7 +1968,7 @@ namespace EtBuggy {
     }
 
     //% block="release the power from the work motor"
-    //% block.loc.nl="haal de kracht van de werkmotor"
+    //% block.loc.nl="haal de kracht van de werkmotor af"
     export function coastServo() {
         servo.coast()
     }
