@@ -1239,6 +1239,7 @@ MIT-license.
 
 namespace PxColor {
 
+    const APDS9960_ADDR = 0x39
     const APDS9960_ENABLE = 0x80
     const APDS9960_ATIME = 0x81
     const APDS9960_CONTROL = 0x8F
@@ -1259,39 +1260,38 @@ namespace PxColor {
 
         private color_first_init = false
         private color_new_init = false
-        private i2cAddress: number = 0x39
 
-        private i2c_write(reg: number, value: number) {
+        constructor() {
+        }
+
+        private i2cwrite_color(addr: number, reg: number, value: number) {
             let buf = pins.createBuffer(2)
             buf[0] = reg
             buf[1] = value
-            pins.i2cWriteBuffer(this.i2cAddress, buf)
+            pins.i2cWriteBuffer(addr, buf)
         }
 
-        private i2c_read(reg: number) {
-            pins.i2cWriteNumber(this.i2cAddress, reg, NumberFormat.UInt8BE)
-            basic.pause(1)
-            let val = pins.i2cReadNumber(this.i2cAddress, NumberFormat.UInt8BE)
+        private i2cread_color(addr: number, reg: number) {
+            pins.i2cWriteNumber(addr, reg, NumberFormat.UInt8BE);
+            let val = pins.i2cReadNumber(addr, NumberFormat.UInt8BE);
             return val;
         }
 
-        private init() {
-            this.i2c_write(APDS9960_ATIME, 252)
-            this.i2c_write(APDS9960_CONTROL, 0x03)
-            this.i2c_write(APDS9960_ENABLE, 0x00)
-            this.i2c_write(APDS9960_GCONF4, 0x00)
-            this.i2c_write(APDS9960_AICLEAR, 0x00)
-            this.i2c_write(APDS9960_ENABLE, 0x01)
+        private initModule(): void {
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_ATIME, 252)
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_CONTROL, 0x03)
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_ENABLE, 0x00)
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_GCONF4, 0x00)
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_AICLEAR, 0x00)
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_ENABLE, 0x01)
             this.color_first_init = true
-            // set to color mode
-            let tmp = this.i2c_read(APDS9960_ENABLE) | 0x2;
-            this.i2c_write(APDS9960_ENABLE, tmp)
         }
 
-        constructor(i2c_address: number = 0x39) {
-            this.i2cAddress = i2c_address
-            this.init()
+        private colorMode(): void {
+            let tmp = this.i2cread_color(APDS9960_ADDR, APDS9960_ENABLE) | 0x2;
+            this.i2cwrite_color(APDS9960_ADDR, APDS9960_ENABLE, tmp);
         }
+
 
         read(): ETcolor {
             let buf = pins.createBuffer(2)
@@ -1305,29 +1305,29 @@ namespace PxColor {
             let temp_b = 0
             let temp = 0
 
-            if (this.color_new_init === false && this.color_first_init === false) {
+            if (this.color_new_init == false && this.color_first_init == false) {
                 let i = 0;
-                while (i++ < 15) {
+                while (i++ < 20) {
                     buf[0] = 0x81
                     buf[1] = 0xCA
-                    pins.i2cWriteBuffer(this.i2cAddress, buf)
+                    pins.i2cWriteBuffer(0x43, buf)
                     buf[0] = 0x80
                     buf[1] = 0x17
-                    pins.i2cWriteBuffer(this.i2cAddress, buf)
-                    basic.pause(50)
+                    pins.i2cWriteBuffer(0x43, buf)
+                    basic.pause(50);
 
-                    if ((this.i2c_read(0xA4) + this.i2c_read(0xA5) * 256) !== 0) {
+                    if ((this.i2cread_color(0x43, 0xA4) + this.i2cread_color(0x43, 0xA5) * 256) != 0) {
                         this.color_new_init = true
                         break;
                     }
                 }
             }
-            if (this.color_new_init === true) {
-                basic.pause(150)
-                c = this.i2c_read(0xA6) + this.i2c_read(0xA7) * 256;
-                r = this.i2c_read(0xA0) + this.i2c_read(0xA1) * 256;
-                g = this.i2c_read(0xA2) + this.i2c_read(0xA3) * 256;
-                b = this.i2c_read(0xA4) + this.i2c_read(0xA5) * 256;
+            if (this.color_new_init == true) {
+                basic.pause(100);
+                c = this.i2cread_color(0x43, 0xA6) + this.i2cread_color(0x43, 0xA7) * 256;
+                r = this.i2cread_color(0x43, 0xA0) + this.i2cread_color(0x43, 0xA1) * 256;
+                g = this.i2cread_color(0x43, 0xA2) + this.i2cread_color(0x43, 0xA3) * 256;
+                b = this.i2cread_color(0x43, 0xA4) + this.i2cread_color(0x43, 0xA5) * 256;
 
                 r *= 1.3 * 0.47 * 0.83
                 g *= 0.69 * 0.56 * 0.83
@@ -1356,31 +1356,33 @@ namespace PxColor {
                 }
             }
             else {
-                if (this.color_first_init === false)
-                    this.init()
-                let tmp = this.i2c_read(APDS9960_STATUS) & 0x1;
-                while (!tmp) {
-                    basic.pause(5)
-                    tmp = this.i2c_read(APDS9960_STATUS) & 0x1;
+                if (this.color_first_init == false) {
+                    this.initModule()
+                    this.colorMode()
                 }
-                c = this.i2c_read(APDS9960_CDATAL) + this.i2c_read(APDS9960_CDATAH) * 256;
-                r = this.i2c_read(APDS9960_RDATAL) + this.i2c_read(APDS9960_RDATAH) * 256;
-                g = this.i2c_read(APDS9960_GDATAL) + this.i2c_read(APDS9960_GDATAH) * 256;
-                b = this.i2c_read(APDS9960_BDATAL) + this.i2c_read(APDS9960_BDATAH) * 256;
+                let tmp = this.i2cread_color(APDS9960_ADDR, APDS9960_STATUS) & 0x1;
+                while (!tmp) {
+                    basic.pause(5);
+                    tmp = this.i2cread_color(APDS9960_ADDR, APDS9960_STATUS) & 0x1;
+                }
+                c = this.i2cread_color(APDS9960_ADDR, APDS9960_CDATAL) + this.i2cread_color(APDS9960_ADDR, APDS9960_CDATAH) * 256;
+                r = this.i2cread_color(APDS9960_ADDR, APDS9960_RDATAL) + this.i2cread_color(APDS9960_ADDR, APDS9960_RDATAH) * 256;
+                g = this.i2cread_color(APDS9960_ADDR, APDS9960_GDATAL) + this.i2cread_color(APDS9960_ADDR, APDS9960_GDATAH) * 256;
+                b = this.i2cread_color(APDS9960_ADDR, APDS9960_BDATAL) + this.i2cread_color(APDS9960_ADDR, APDS9960_BDATAH) * 256;
             }
 
             // map to rgb based on clear channel
             let avg = c / 3;
-            r = r * 255 / avg;
-            g = g * 255 / avg;
-            b = b * 255 / avg;
+            r = Math.map(r * 255 / avg, 0, 765, 0, 255);
+            g = Math.map(g * 255 / avg, 0, 765, 0, 255);
+            b = Math.map(b * 255 / avg, 0, 765, 0, 255);
 
-            return etFromRgbValues(r / 255, g / 255, b / 255)
+            return etFromRgbValues(r, g, b)
         }
     }
 
-    export function create(i2c_address: number = 0x39): Device {
-        let device = new Device(i2c_address)
+    export function create(): Device {
+        let device = new Device()
         return device
     }
 }
@@ -1879,8 +1881,8 @@ namespace EtBuggy {
     export function readFieldPos(): ETfield {
         if (colorsens.read() === trackcolor)
             return ETfield.OutsideField
-        if (tracksens.read() === ETtrack.OffTrack)
-            return ETfield.InField
+//        if (tracksens.read() === ETtrack.OffTrack)
+//            return ETfield.InField
         return ETfield.OnBorder
     }
 
@@ -2010,3 +2012,15 @@ namespace EtBuggy {
 /////////////////////
 //  END EXTENSION  //
 /////////////////////
+
+
+
+basic.forever(function() {
+    if (EtBuggy.isFieldPos(ETfield.InField))
+        basic.showIcon(IconNames.Yes)
+    if (EtBuggy.isFieldPos(ETfield.OnBorder))
+        basic.showString("?")
+    if (EtBuggy.isFieldPos(ETfield.OutsideField))
+        basic.showIcon(IconNames.No)
+    basic.showIcon(IconNames.Heart)
+})
