@@ -304,7 +304,7 @@ function etFromRgbValues(red: number, green: number, blue: number, clearch?: num
     let max = Math.max(red, Math.max(green, blue))
     let min = Math.min(red, Math.min(green, blue))
 
-    if (Math.abs(max - min) < 40) {
+    if (Math.abs(max - min) < 60) {
         if (clearch == undefined) {
             let bright = Math.round(0.21 * red + 0.72 * green + 0.07 * blue)
             if (bright > 100) return ETcolor.White
