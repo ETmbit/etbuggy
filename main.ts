@@ -2004,7 +2004,7 @@ namespace EtBuggy {
     }
 
     //% block="turn around %rot"
-    //% block.loc.nl="keer %rot om"
+    //% block.loc.nl="keer %rot terug"
     export function turnAround(rot: ETrotate) {
         let speedL, speedR: number
         let heading = headingsens.read() + 180
