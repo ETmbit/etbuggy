@@ -1706,8 +1706,8 @@ enum ETfield {
     //% block="in the field"
     //% block.loc.nl="in het veld"
     InField,
-    //% block="on a marker"
-    //% block.loc.nl="op een markering"
+    //% block="over a marker"
+    //% block.loc.nl="over een markering"
     OnMarker,
     //% block="on the line"
     //% block.loc.nl="op de lijn"
