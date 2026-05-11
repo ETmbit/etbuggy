@@ -2009,8 +2009,8 @@ namespace EtBuggy {
         servo.coast()
     }
 
-    //% block="turn the work motor %angle degrees %dir"
-    //% block.loc.nl="draai de werkmotor %angle graden %dir"
+    //% block="turn the work motor %angle ⁰ %dir"
+    //% block.loc.nl="draai de werkmotor %angle ⁰ %dir"
     //% angle.min=0 angle.max=360
     export function turnServo(angle: number, dir: ETmoveZ) {
         if (excludeservo) {
@@ -2054,8 +2054,8 @@ namespace EtBuggy {
         go()
     }
 
-    //% block="turn %rot with %angle º"
-    //% block.loc.nl="keer %rot met %angle º"
+    //% block="turn %rot with %angle ⁰"
+    //% block.loc.nl="keer %rot met %angle ⁰"
     //% angle.min=0 angle.max=360
     export function turnAngle(rot: ETrotate, angle: number) {
         let heading = headingsens.read() + (rot == ETrotate.Clockwise ? angle : -angle)
