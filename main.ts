@@ -283,8 +283,10 @@ function etFromRgbValues(red: number, green: number, blue: number, clearch?: num
             else return ETcolor.Black
         }
         else {
-            if (clearch > 60) return ETcolor.White
-            else return ETcolor.Black
+            if (clearch > 60)
+                return ETcolor.White
+            else
+                return ETcolor.Black
         }
     }
 
@@ -1730,7 +1732,7 @@ let etBuggyOnBlackHandler: () => void
 let etBuggyOnWhiteHandler: () => void
 let etBuggyOnOrangeHandler: () => void
 let etBuggyOnPurpleHandler: () => void
-let etBuggyOnBorderHander: () => void
+let etBuggyOnBorderHandler: () => void
 
 //% color="#FF8844" icon="\uf1b9"
 //% block="Buggy"
@@ -1746,7 +1748,8 @@ namespace EtBuggy {
     let colorsens = PxColor.create()
     let headingsens = EtHeading.create()
 
-    let excludeservo = false
+    let excludeservo = false    // set by EtBuggy.excludeServo
+    let istracking = false      // set by EtBuggy.setTrackType
     let tracktype: ETtrackType
     let trackcolor: ETcolor
     let fieldcolor: ETcolor
@@ -1763,6 +1766,10 @@ namespace EtBuggy {
 
     basic.forever(function () {
         let handler: () => void
+        if (istracking && (tracksens.read() !== ETtrack.OffTrack)) {
+            if (etBuggyOnBorderHandler) etBuggyOnBorderHandler()
+            return
+        }
         let color = colorsens.read()
         if (color == fieldcolor || color == lastcolor)
             return
@@ -1898,7 +1905,7 @@ namespace EtBuggy {
     //% block="when the buggy touches the border"
     //% block.loc.nl="wanneer de buggy de lijn raakt"
     export function onFieldBorder(code: () => void) {
-        etBuggyOnBorderHander = code
+        etBuggyOnBorderHandler = code
     }
 
     //% subcategory="Veld"
@@ -1986,6 +1993,7 @@ namespace EtBuggy {
         trackcolor = color
         tracktype = line
         tracksens.setTrackType(line)
+        istracking = true
     }
 
     //% subcategory="Instellingen"
@@ -2018,6 +2026,17 @@ namespace EtBuggy {
     //% block.loc.nl="keer %rot naar het %heading"
     export function turnTo(rot: ETrotate, heading: ETheading) {
         let speedL, speedR: number
+
+        // drive a little bit in opposite direction
+        // to avoid that the color sensor will see
+        // the line and stop the buggy
+        if (speedPerc > 0)
+            car.speed(-speedPerc, -speedPerc)
+        else
+            car.speed(speedPerc, speedPerc)
+        basic.pause(250)
+
+        // perform the actual turning
         if (rot == ETrotate.Clockwise) {
             speedL = 30
             speedR = -30
@@ -2030,6 +2049,8 @@ namespace EtBuggy {
         let tm = control.millis() + 5000
         while (headingsens.read() !== heading && tm > control.millis())
             basic.pause(1)
+
+        // proceed with the previous driving
         go()
     }
 
@@ -2046,7 +2067,6 @@ namespace EtBuggy {
     //% block="turn around"
     //% block.loc.nl="keer om"
     export function turnAround() {
-        let speedL, speedR: number
         let heading = headingsens.read() + 180
         if (heading > 360) heading -= 360
         turnTo(ETrotate.Clockwise, heading)
