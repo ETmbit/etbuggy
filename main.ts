@@ -1901,14 +1901,6 @@ namespace EtBuggy {
     }
 
     //% subcategory="Veld"
-    //% color="#802080"
-    //% block="when the buggy touches the border"
-    //% block.loc.nl="wanneer de buggy de lijn raakt"
-    export function onFieldBorder(code: () => void) {
-        etBuggyOnBorderHandler = code
-    }
-
-    //% subcategory="Veld"
     //% block="the buggy drives over %color"
     //% block.loc.nl="de buggy over %color rijdt"
     export function isFieldColor(color: ETcolor): boolean {
@@ -1941,6 +1933,14 @@ namespace EtBuggy {
         if (tracksens.read() === ETtrack.OffTrack)
             return ETfield.InField
         return ETfield.OnBorder
+    }
+
+    //% subcategory="Lijn"
+    //% color="#802080"
+    //% block="when the buggy touches the border"
+    //% block.loc.nl="wanneer de buggy de lijn raakt"
+    export function onFieldBorder(code: () => void) {
+        etBuggyOnBorderHandler = code
     }
 
     //% subcategory="Lijn"
@@ -2038,12 +2038,12 @@ namespace EtBuggy {
 
         // perform the actual turning
         if (rot == ETrotate.Clockwise) {
-            speedL = 30
-            speedR = -30
+            speedL = 25
+            speedR = -25
         }
         else {
-            speedL = -30
-            speedR = 30
+            speedL = -25
+            speedR = 25
         }
         car.speed(speedL, speedR)
         let tm = control.millis() + 5000
