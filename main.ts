@@ -1465,6 +1465,7 @@ namespace PxServo {
         private SV: Servo
         private relative = false
         private curangle = 0
+        private active = true
 
         private readAngle(): number {
             basic.pause(4)
@@ -1536,6 +1537,15 @@ namespace PxServo {
             this.relative = (mode === ETangle.Relative)
         }
 
+        setActive(state: boolean) {
+            this.active = state
+            if (!state) this.coast()
+        }
+
+        isActive() {
+            return this.active
+        }
+
         read(): number {
             // angle in degrees
             let position = this.readAngle()
@@ -1572,6 +1582,7 @@ namespace PxWheelsTwo {
         private calForw = 0 // pos: perc. slowing down left motor
         private calRev = 0  // neg: perc. slowing down right motor
         private diameter: number = 67
+        private active = true
 
         constructor(left: Motor, right: Motor) {
             this.ML = left
@@ -1580,6 +1591,7 @@ namespace PxWheelsTwo {
 
         private _speed(motor: MotorPort, rotation: ETrotate, speed: number): void {
             // speed in %
+            if (!this.active) return
             if (speed > 100) speed = 100
             let buf = pins.createBuffer(8)
             buf[0] = 0xFF
@@ -1656,6 +1668,15 @@ namespace PxWheelsTwo {
             buf[2] = this.MR.Port + 1;
             pins.i2cWriteBuffer(0x10, buf)
             basic.pause(20)
+        }
+
+        setActive(state: boolean) {
+            this.active = state
+            if (!state) this.stop()
+        }
+
+        isActive() {
+            return this.active
         }
 
         read(): [number, number] {
@@ -1765,20 +1786,37 @@ namespace EtBuggy {
     let bendPerc = 0
 
     basic.forever(function () {
-        let handler: () => void
+
+        // NOTE:
+        // DO NOT CHANGE THE ORDER OF THE TESTS:
+        // 1. TRACKCOLOR, 2. OFFTRACK, 3. FIELDCOLOR, 4. LASTCOLOR, 5. SWITCH COLOR
+
+        let color = colorsens.read()
+
+        if (color == trackcolor) {
+            // outside field status, so freeze
+            car.setActive(false)
+            servo.setActive(false)
+            // even if a handler is defined, it should not be called
+            return
+        }
+
         if (istracking && (tracksens.read() !== ETtrack.OffTrack)) {
+            car.setActive(true)
+            servo.setActive(true)
             if (etBuggyOnBorderHandler) etBuggyOnBorderHandler()
             return
         }
-        let color = colorsens.read()
-        if (color == fieldcolor || color == lastcolor)
-            return
-        if (color == trackcolor) {
-            // outside field status
-            // even if a handler is defined, it should not be called
-            stop()
+
+        if (color == fieldcolor) {
+            car.setActive(true)
+            servo.setActive(true)
             return
         }
+
+        if (color == lastcolor) return
+
+        let handler: () => void
         switch (color) {
             case ETcolor.Red: handler = etBuggyOnRedHandler; break;
             case ETcolor.Green: handler = etBuggyOnGreenHandler; break;
@@ -2047,8 +2085,11 @@ namespace EtBuggy {
         }
         car.speed(speedL, speedR)
         let tm = control.millis() + 5000
-        while (headingsens.read() !== heading && tm > control.millis())
+        while (headingsens.read() !== heading) {
+            if (tm < control.millis()) break
+            if (!car.isActive()) break
             basic.pause(1)
+        }
 
         // proceed with the previous driving
         go()
