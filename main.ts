@@ -1585,8 +1585,7 @@ namespace EtBuggy {
 
     let excludeservo = false    // set by EtBuggy.excludeServo
     let istracking = false      // set by EtBuggy.setTrackType
-    let tracktype: ETtrackType
-    let trackmode: ETtrackMode
+    let trackmode: ETtrackMode = ETtrackMode.FieldBorder
     let trackcolor: ETcolor
     let fieldcolor: ETcolor
     let lastcolor: ETcolor = 0
@@ -1858,7 +1857,6 @@ namespace EtBuggy {
     //% block.loc.nl="de lijn is %line met kleur %color"
     export function setTrackType(line: ETtrackType, color: ETcolor) {
         trackcolor = color
-        tracktype = line
         tracksens.setTrackType(line)
         istracking = true
     }
