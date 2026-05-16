@@ -1734,6 +1734,14 @@ enum ETfield {
     OutsideField,
 }
 
+enum ETtrackMode {
+    //% block="outside the field"
+    //% block.loc.nl="uit het veld"
+    FieldBorder,
+    //% block="off the line"
+    //% block.loc.nl="van de lijn"
+    LineFollow,
+}
 enum ETdistSens {
     //% block="Planet X ultrasone"
     //% block.loc.nl="Planet X ultrasone"
@@ -1772,6 +1780,7 @@ namespace EtBuggy {
     let excludeservo = false    // set by EtBuggy.excludeServo
     let istracking = false      // set by EtBuggy.setTrackType
     let tracktype: ETtrackType
+    let trackmode: ETtrackMode
     let trackcolor: ETcolor
     let fieldcolor: ETcolor
     let lastcolor: ETcolor = 0
@@ -1793,45 +1802,52 @@ namespace EtBuggy {
 
         let color = colorsens.read()
 
-        if (color == trackcolor) {
-            // outside field status, so freeze
-            car.setActive(false)
-            servo.setActive(false)
-            // even if a handler is defined, it should not be called
-            return
+        if (trackmode == ETtrackMode.LineFollow) {
+            let state = (color == trackcolor)
+            car.setActive(state)
+            servo.setActive(state)
         }
+        else {
+            if (color == trackcolor) {
+                // outside field status, so freeze
+                car.setActive(false)
+                servo.setActive(false)
+                // even if a handler is defined, it should not be called
+                return
+            }
 
-        if (istracking && (tracksens.read() !== ETtrack.OffTrack)) {
-            car.setActive(true)
-            servo.setActive(true)
-            if (etBuggyOnBorderHandler) etBuggyOnBorderHandler()
-            return
+            if (istracking && (tracksens.read() !== ETtrack.OffTrack)) {
+                car.setActive(true)
+                servo.setActive(true)
+                if (etBuggyOnBorderHandler) etBuggyOnBorderHandler()
+                return
+            }
+
+            if (color == fieldcolor) {
+                car.setActive(true)
+                servo.setActive(true)
+                return
+            }
+
+            if (color == lastcolor) return
+
+            let handler: () => void
+            switch (color) {
+                case ETcolor.Red: handler = etBuggyOnRedHandler; break;
+                case ETcolor.Green: handler = etBuggyOnGreenHandler; break;
+                case ETcolor.Blue: handler = etBuggyOnBlueHandler; break;
+                case ETcolor.Yellow: handler = etBuggyOnYellowHandler; break;
+                case ETcolor.Cyan: handler = etBuggyOnCyanHandler; break;
+                case ETcolor.Magenta: handler = etBuggyOnMagentaHandler; break;
+                case ETcolor.Black: handler = etBuggyOnBlackHandler; break;
+                case ETcolor.White: handler = etBuggyOnWhiteHandler; break;
+                case ETcolor.Orange: handler = etBuggyOnOrangeHandler; break;
+                case ETcolor.Purple: handler = etBuggyOnPurpleHandler; break;
+            }
+            if (handler) handler()
+            else stop()
+            lastcolor = color
         }
-
-        if (color == fieldcolor) {
-            car.setActive(true)
-            servo.setActive(true)
-            return
-        }
-
-        if (color == lastcolor) return
-
-        let handler: () => void
-        switch (color) {
-            case ETcolor.Red: handler = etBuggyOnRedHandler; break;
-            case ETcolor.Green: handler = etBuggyOnGreenHandler; break;
-            case ETcolor.Blue: handler = etBuggyOnBlueHandler; break;
-            case ETcolor.Yellow: handler = etBuggyOnYellowHandler; break;
-            case ETcolor.Cyan: handler = etBuggyOnCyanHandler; break;
-            case ETcolor.Magenta: handler = etBuggyOnMagentaHandler; break;
-            case ETcolor.Black: handler = etBuggyOnBlackHandler; break;
-            case ETcolor.White: handler = etBuggyOnWhiteHandler; break;
-            case ETcolor.Orange: handler = etBuggyOnOrangeHandler; break;
-            case ETcolor.Purple: handler = etBuggyOnPurpleHandler; break;
-        }
-        if (handler) handler()
-        else stop()
-        lastcolor = color
     })
 
     function go(): void {
@@ -2022,6 +2038,13 @@ namespace EtBuggy {
     //% block.loc.nl="gebruik de werkmotor met %mode hoeken"
     export function setAngleMode(mode: ETangle) {
         servo.setAngleMode(mode)
+    }
+
+    //% subcategory="Instellingen"
+    //% block="the buggy may not drive %mode"
+    //% block.loc.nl="de buggy mag niet %mode rijden"
+    export function setTrackMode(mode: ETtrackMode) {
+        trackmode = mode
     }
 
     //% subcategory="Instellingen"
