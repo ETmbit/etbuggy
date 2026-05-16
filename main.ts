@@ -1596,6 +1596,19 @@ namespace EtBuggy {
     car.setDiameter(67)
     servo.setAngleMode(ETangle.Relative)
 
+    function startHandler() {
+        car.setActive(true)
+        servo.setActive(true)
+    }
+
+    function stopHandler() {
+        car.setActive(false)
+        servo.setActive(false)
+    }
+
+    etinput.registerStartHandler(startHandler)
+    etinput.registerStopHandler(stopHandler)
+
     let speedPerc = 0
     let bendPerc = 0
 
