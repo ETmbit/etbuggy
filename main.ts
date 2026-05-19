@@ -373,6 +373,10 @@ input.onButtonPressed(Button.B, function () {
         ETstopHandlers[ix]()
 })
 
+input.onButtonPressed(Button.AB, function () {
+    input.calibrateCompass()
+})
+
 namespace etinput {
 
     export function registerStartHandler(handler: () => void) {
